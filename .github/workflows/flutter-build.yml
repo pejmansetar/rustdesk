@@ -1,6 +1,16 @@
 name: Build the flutter version of the RustDesk
 
 on:
+  workflow_dispatch:
+    inputs:
+      upload-artifact:
+        type: boolean
+        default: true
+        description: "Upload output files (exe)"
+      upload-tag:
+        type: string
+        default: "nightly"
+        description: "Release tag"
   workflow_call:
     inputs:
       upload-artifact:
@@ -227,7 +237,7 @@ jobs:
           path: "./rustdesk"
 
       - name: Upload unsigned
-        if: env.UPLOAD_ARTIFACT == 'true'
+        #if: env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
@@ -242,7 +252,7 @@ jobs:
 
       - name: Build self-extracted executable
         shell: bash
-        if: env.UPLOAD_ARTIFACT == 'true'
+        #if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
@@ -273,7 +283,7 @@ jobs:
 
       - name: Publish Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
-        if: env.UPLOAD_ARTIFACT == 'true'
+        #if: env.UPLOAD_ARTIFACT == 'true'
         with:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
@@ -394,7 +404,7 @@ jobs:
           fi
 
       - name: Upload unsigned
-        if: env.UPLOAD_ARTIFACT == 'true'
+        #if: env.UPLOAD_ARTIFACT == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
@@ -426,7 +436,7 @@ jobs:
 
       - name: Publish Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
-        if: env.UPLOAD_ARTIFACT == 'true'
+        #if: env.UPLOAD_ARTIFACT == 'true'
         with:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
