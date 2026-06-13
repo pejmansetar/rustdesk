@@ -429,33 +429,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  Widget buildHelpCards(String updateUrl) {
-    if (!bind.isCustomClient() &&
-        updateUrl.isNotEmpty &&
-        !isCardClosed &&
-        bind.mainUriPrefixSync().contains('rustdesk')) {
-      final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
-      String btnText = isToUpdate ? 'Update' : 'Download';
-      GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://rustdesk.com/download');
-        await launchUrl(url);
-      };
-      if (isToUpdate) {
-        onPressed = () {
-          handleUpdate(updateUrl);
-        };
-      }
-      return buildInstallCard(
-          "Status",
-          "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",
-          btnText,
-          onPressed,
-          closeButton: true,
-          help: isToUpdate ? 'Changelog' : null,
-          link: isToUpdate
-              ? 'https://github.com/rustdesk/rustdesk/releases/tag/${bind.mainGetNewVersion()}'
-              : null);
-    }
+   {
+    // =====================================
+    // Customization: Update banner removed
+    // =====================================
+    
     if (systemError.isNotEmpty) {
       return buildInstallCard("", systemError, "", () {});
     }
@@ -482,7 +460,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         return buildInstallCard("Permissions", "config_screen", "Configure",
             () async {
           bind.mainIsCanScreenRecording(prompt: true);
-          watchIsCanScreenRecording = true;
+          watchIsCanScreenReco  Widget buildHelpCards(String updateUrl)rding = true;
         }, help: 'Help', link: translate("doc_mac_permission"));
       } else if (!isOutgoingOnly && !bind.mainIsProcessTrusted(prompt: false)) {
         return buildInstallCard("Permissions", "config_acc", "Configure",
@@ -504,22 +482,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           bind.mainIsInstalledDaemon(prompt: true);
         });
       }
-      //// Disable microphone configuration for macOS. We will request the permission when needed.
-      // else if ((await osxCanRecordAudio() !=
-      //     PermissionAuthorizeType.authorized)) {
-      //   return buildInstallCard("Permissions", "config_microphone", "Configure",
-      //       () async {
-      //     osxRequestAudio();
-      //     watchIsCanRecordAudio = true;
-      //   });
-      // }
     } else if (isLinux) {
       if (bind.isOutgoingOnly()) {
         return Container();
       }
       final LinuxCards = <Widget>[];
       if (bind.isSelinuxEnforcing()) {
-        // Check is SELinux enforcing, but show user a tip of is SELinux enabled for simple.
         final keyShowSelinuxHelpTip = "show-selinux-help-tip";
         if (bind.mainGetLocalOption(key: keyShowSelinuxHelpTip) != 'N') {
           LinuxCards.add(buildInstallCard(
@@ -560,8 +528,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.centerRight,
         child: OutlinedButton(
           onPressed: () {
-            SystemNavigator.pop(); // Close the application
-            // https://github.com/flutter/flutter/issues/66631
+            SystemNavigator.pop(); 
             if (isWindows) {
               exit(0);
             }
@@ -605,8 +572,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           margin: EdgeInsets.fromLTRB(
               0, marginTop, 0, bind.isIncomingOnly() ? marginTop : 0),
           child: Container(
+              // ===============================================
+              // Customization: Passak Pink/Purple Gradient
+              // ===============================================
               decoration: BoxDecoration(
-                  gradient: LinearGradient(
+                  gradient: const LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
                 colors: [
@@ -614,7 +584,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   Color.fromARGB(255, 244, 114, 124),
                 ],
               )),
-              padding: EdgeInsets.all(20),
+              // ===============================================
+              padding: const EdgeInsets.all(20),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -623,7 +594,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                               Center(
                                   child: Text(
                                 translate(title),
-                                style: TextStyle(
+                                style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15),
@@ -634,7 +605,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         if (content.isNotEmpty)
                           Text(
                             translate(content),
-                            style: TextStyle(
+                            style: const TextStyle(
                                 height: 1.5,
                                 color: Colors.white,
                                 fontWeight: FontWeight.normal,
@@ -668,7 +639,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                           await launchUrl(Uri.parse(link!)),
                                       child: Text(
                                         translate(help),
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                             decoration:
                                                 TextDecoration.underline,
                                             color: Colors.white,
@@ -682,7 +653,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             top: 18,
             right: 0,
             child: IconButton(
-              icon: Icon(
+              icon: const Icon(
                 Icons.close,
                 color: Colors.white,
                 size: 20,
@@ -693,7 +664,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       ],
     );
   }
-
+  
   @override
   void initState() {
     super.initState();
@@ -1069,11 +1040,11 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
                           style: TextStyle(
                               color: checked
                                   ? const Color(0xFF0A9471)
-                                  : Color.fromARGB(255, 198, 86, 157)),
+                                  : const Color.fromARGB(255, 198, 86, 157)), // Custom Pink Text
                         ),
                         backgroundColor: checked
                             ? const Color(0xFFD0F7ED)
-                            : Color.fromARGB(255, 247, 205, 232));
+                            : const Color.fromARGB(255, 247, 205, 232)); // Custom Pink Background
                   }).toList(),
                 ))
           ],
