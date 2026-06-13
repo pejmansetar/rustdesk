@@ -429,6 +429,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
+   Widget buildHelpCards(String updateUrl)
    {
     // =====================================
     // Customization: Update banner removed
