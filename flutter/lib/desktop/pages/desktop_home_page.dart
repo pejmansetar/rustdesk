@@ -59,16 +59,41 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isIncomingOnly = bind.isIncomingOnly();
+    // ========================================================
+    // Customization: Remotik Single-Column Centered UI
+    // ========================================================
     return _buildBlock(
-        child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
-      ],
-    ));
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 1. آیدی و پسورد خود کاربر (وسط‌چین شده)
+              Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: buildLeftPane(context),
+              ),
+              const SizedBox(height: 20),
+              
+              // 2. کادر وارد کردن آیدی مقصد و دکمه کانکت
+              Container(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: buildRightPane(context),
+              ),
+              const SizedBox(height: 40),
+
+              // 3. بنرهای داینامیک سرور (Passak)
+              Image.network(
+                'https://file.passak.org/upload/u/20260613/test.png',
+                height: 100,
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildBlock({required Widget child}) {
