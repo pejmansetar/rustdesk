@@ -88,16 +88,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               // 2. بنرهای داینامیک ۳ تایی
               if (!isOutgoingOnly) buildBannersRow(),
 
-              // 3. نمایش خطاها و هشدار نصب
-              Obx(() => buildHelpCards(stateGlobal.updateUrl.value)),
-
-              const Divider(height: 1),
-
-              // 4. بخش کانکت و لیست سیستم‌های اخیر
+              // 3. بخش کانکت و لیست سیستم‌های اخیر (میاد وسط صفحه)
               Expanded(
                 child: ConnectionPage(),
               ),
-            ],
+
+              const Divider(height: 1),
+
+              // 4. کادر صورتی نصب (منتقل شد به پایین صفحه)
+              Obx(() => buildHelpCards(stateGlobal.updateUrl.value)),            ],
           ),
         ),
       ),
