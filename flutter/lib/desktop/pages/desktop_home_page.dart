@@ -12,15 +12,14 @@ import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
-import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/plugin/ui_manager.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
@@ -37,8 +36,6 @@ const borderColor = Color(0xFF2F65BA);
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
-  final _leftPaneScrollController = ScrollController();
-
   @override
   bool get wantKeepAlive => true;
   var systemError = '';
@@ -51,52 +48,103 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
 
-  final RxBool _editHover = false.obs;
   final RxBool _block = false.obs;
-
   final GlobalKey _childKey = GlobalKey();
+
+  // متغیر برای ذخیره اطلاعات بنرها از سمت سرور پاصک
+  Map<String, dynamic> bannerData = {};
+
+  // تابعی که JSON را از سرور می‌خواند
+  Future<void> _fetchBannerData() async {
+    try {
+      final url = Uri.parse('https://passak.org/php/remotik-banner.php');
+      
+      final request = await HttpClient().getUrl(url);
+      final response = await request.close();
+      if (response.statusCode == 200) {
+        final jsonString = await response.transform(utf8.decoder).join();
+        if (mounted) {
+          setState(() {
+            bannerData = jsonDecode(jsonString);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to load banners: $e");
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBannerData(); 
+    
+    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
+      await gFFI.serverModel.fetchID();
+      final error = await bind.mainGetError();
+      if (systemError != error) {
+        systemError = error;
+        setState(() {});
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final isOutgoingOnly = bind.isOutgoingOnly();
 
-    // ========================================================
-    // Customization: Remotik Corporate Single-Column Centered UI
-    // ========================================================
+    Widget topContent = Column(
+      children: [
+        if (!isOutgoingOnly)
+          Container(
+            padding: const EdgeInsets.only(top: 30, bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: _buildDynamicBanner(
+                      bannerData['top_left']?['image'],
+                      bannerData['top_left']?['link'],
+                      height: 100,
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    buildCorporateIDBoard(context),
+                    const SizedBox(height: 10),
+                    buildCorporatePasswordBoard(context),
+                  ],
+                ),
+                Expanded(
+                  child: Center(
+                    child: _buildDynamicBanner(
+                      bannerData['top_right']?['image'],
+                      bannerData['top_right']?['link'],
+                      height: 100,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (!isOutgoingOnly) buildBannersRow(),
+      ],
+    );
+
+    Widget bottomContent = Obx(() => buildHelpCards(stateGlobal.updateUrl.value));
+
     return _buildBlock(
       child: ChangeNotifierProvider.value(
         value: gFFI.serverModel,
         child: Container(
           color: Theme.of(context).scaffoldBackgroundColor,
-          child: Column(
-            key: _childKey,
-            children: [
-              // 1. آیدی و پسورد شرکتی
-              if (!isOutgoingOnly)
-                Container(
-                  padding: const EdgeInsets.only(top: 30, bottom: 20),
-                  child: Column(
-                    children: [
-                      buildCorporateIDBoard(context),
-                      const SizedBox(height: 10),
-                      buildCorporatePasswordBoard(context),
-                    ],
-                  ),
-                ),
-
-              // 2. بنرهای داینامیک ۳ تایی
-              if (!isOutgoingOnly) buildBannersRow(),
-
-              // 3. بخش کانکت و لیست سیستم‌های اخیر (میاد وسط صفحه)
-              Expanded(
-                child: ConnectionPage(),
-              ),
-
-              const Divider(height: 1),
-
-              // 4. کادر صورتی نصب (منتقل شد به پایین صفحه)
-              Obx(() => buildHelpCards(stateGlobal.updateUrl.value)),            ],
+          child: ConnectionPage(
+            topContent: topContent,
+            bottomContent: bottomContent,
           ),
         ),
       ),
@@ -108,16 +156,33 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  // ==========================================
-  // New Methods for Corporate UI
-  // ==========================================
+  Widget _buildDynamicBanner(String? imageUrl, String? linkUrl, {double? height}) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return SizedBox(height: height);
+    }
+    
+    return GestureDetector(
+      onTap: () {
+        if (linkUrl != null && linkUrl.isNotEmpty) {
+          launchUrlString(linkUrl);
+        }
+      },
+      child: Image.network(
+        imageUrl,
+        height: height,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => SizedBox(height: height), 
+      ),
+    );
+  }
+
   Widget buildCorporateIDBoard(BuildContext context) {
     final model = gFFI.serverModel;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-          width: 100,
+          width: 80,
           child: Text(
             translate("ID"),
             textAlign: TextAlign.right,
@@ -149,13 +214,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               style: const TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFE53935), // رنگ قرمز آیدی
+                color: Color(0xFFE53935),
                 letterSpacing: 2.0,
               ),
             ).workaroundFreezeLinuxMint(),
           ),
         ),
-        const SizedBox(width: 120),
       ],
     );
   }
@@ -173,9 +237,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(
-              width: 100,
+              width: 80,
               child: AutoSizeText(
-                translate("One-time password"),
+                translate("One-time"),
                 textAlign: TextAlign.right,
                 style: TextStyle(
                     fontSize: 12, color: textColor?.withOpacity(0.6)),
@@ -212,7 +276,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             ),
             const SizedBox(width: 10),
             SizedBox(
-              width: 110,
+              width: 60,
               child: Row(
                 children: [
                   if (showOneTime)
@@ -225,12 +289,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             child: Icon(
                               Icons.refresh,
                               color: refreshHover.value ? textColor : Colors.grey,
-                              size: 20,
+                              size: 18,
                             ))),
                       ),
                       onHover: (value) => refreshHover.value = value,
                     ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   if (!bind.isDisableSettings())
                     InkWell(
                       child: Tooltip(
@@ -239,7 +303,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           () => Icon(
                             Icons.edit,
                             color: editHover.value ? textColor : Colors.grey,
-                            size: 20,
+                            size: 18,
                           ),
                         ),
                       ),
@@ -258,31 +322,28 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildBannersRow() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-      height: 140,
+      height: 120,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           Expanded(
-            child: Image.network(
-              'https://file.passak.org/upload/u/20260613/passak_logo.png', // لینک عکس اول
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.business, size: 50, color: Colors.grey),
+            child: _buildDynamicBanner(
+              bannerData['bottom_1']?['image'],
+              bannerData['bottom_1']?['link'],
             ),
           ),
           const SizedBox(width: 20),
           Expanded(
-            child: Image.network(
-              'https://file.passak.org/upload/u/20260613/test.png', // لینک عکس دوم
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.celebration, size: 50, color: Colors.grey),
+            child: _buildDynamicBanner(
+              bannerData['bottom_2']?['image'],
+              bannerData['bottom_2']?['link'],
             ),
           ),
           const SizedBox(width: 20),
           Expanded(
-            child: Image.network(
-              'https://file.passak.org/upload/u/20260613/banner3.png', // لینک عکس سوم
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(Icons.image, size: 50, color: Colors.grey),
+            child: _buildDynamicBanner(
+              bannerData['bottom_3']?['image'],
+              bannerData['bottom_3']?['link'],
             ),
           ),
         ],
@@ -290,15 +351,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  // ==========================================
-  // Original System & Backend Methods (Untouched)
-  // ==========================================
-
   Widget buildHelpCards(String updateUrl) {
     if (systemError.isNotEmpty) {
       return buildInstallCard("", systemError, "", () {});
     }
-
     if (isWindows && !bind.isDisableInstallation()) {
       if (!bind.mainIsInstalled()) {
         return buildInstallCard(
@@ -315,88 +371,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           bind.mainUpdateMe();
         });
       }
-    } else if (isMacOS) {
-      final isOutgoingOnly = bind.isOutgoingOnly();
-      if (!(isOutgoingOnly || bind.mainIsCanScreenRecording(prompt: false))) {
-        return buildInstallCard("Permissions", "config_screen", "Configure",
-            () async {
-          bind.mainIsCanScreenRecording(prompt: true);
-          watchIsCanScreenRecording = true;
-        }, help: 'Help', link: translate("doc_mac_permission"));
-      } else if (!isOutgoingOnly && !bind.mainIsProcessTrusted(prompt: false)) {
-        return buildInstallCard("Permissions", "config_acc", "Configure",
-            () async {
-          bind.mainIsProcessTrusted(prompt: true);
-          watchIsProcessTrust = true;
-        }, help: 'Help', link: translate("doc_mac_permission"));
-      } else if (!bind.mainIsCanInputMonitoring(prompt: false)) {
-        return buildInstallCard("Permissions", "config_input", "Configure",
-            () async {
-          bind.mainIsCanInputMonitoring(prompt: true);
-          watchIsInputMonitoring = true;
-        }, help: 'Help', link: translate("doc_mac_permission"));
-      } else if (!isOutgoingOnly &&
-          !svcStopped.value &&
-          bind.mainIsInstalled() &&
-          !bind.mainIsInstalledDaemon(prompt: false)) {
-        return buildInstallCard("", "install_daemon_tip", "Install", () async {
-          bind.mainIsInstalledDaemon(prompt: true);
-        });
-      }
-    } else if (isLinux) {
-      if (bind.isOutgoingOnly()) {
-        return Container();
-      }
-      final LinuxCards = <Widget>[];
-      if (bind.isSelinuxEnforcing()) {
-        final keyShowSelinuxHelpTip = "show-selinux-help-tip";
-        if (bind.mainGetLocalOption(key: keyShowSelinuxHelpTip) != 'N') {
-          LinuxCards.add(buildInstallCard(
-            "Warning",
-            "selinux_tip",
-            "",
-            () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
-            help: 'Help',
-            link:
-                'https://rustdesk.com/docs/en/client/linux/#permissions-issue',
-            closeButton: true,
-            closeOption: keyShowSelinuxHelpTip,
-          ));
-        }
-      }
-      if (bind.mainCurrentIsWayland()) {
-        LinuxCards.add(buildInstallCard(
-            "Warning", "wayland_experiment_tip", "", () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
-            help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#x11-required'));
-      } else if (bind.mainIsLoginWayland()) {
-        LinuxCards.add(buildInstallCard("Warning",
-            "Login screen using Wayland is not supported", "", () async {},
-            marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
-            help: 'Help',
-            link: 'https://rustdesk.com/docs/en/client/linux/#login-screen'));
-      }
-      if (LinuxCards.isNotEmpty) {
-        return Column(
-          children: LinuxCards,
-        );
-      }
-    }
-    if (bind.isIncomingOnly()) {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: OutlinedButton(
-          onPressed: () {
-            SystemNavigator.pop(); 
-            if (isWindows) {
-              exit(0);
-            }
-          },
-          child: Text(translate('Quit')),
-        ),
-      ).marginAll(14);
     }
     return Container();
   }
@@ -413,18 +387,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       return const SizedBox();
     }
     void closeCard() async {
-      if (closeOption != null) {
-        await bind.mainSetLocalOption(key: closeOption, value: 'N');
-        if (bind.mainGetLocalOption(key: closeOption) == 'N') {
-          setState(() {
-            isCardClosed = true;
-          });
-        }
-      } else {
-        setState(() {
-          isCardClosed = true;
-        });
-      }
+      setState(() {
+        isCardClosed = true;
+      });
     }
 
     if (isCardClosed) return const SizedBox();
@@ -432,7 +397,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return Stack(
       children: [
         Container(
-          margin: EdgeInsets.fromLTRB(40, marginTop, 40, marginTop),
+          // ==========================================
+          // CUSTOMIZATION: نازک‌تر شدن و تمام‌عرض شدن کادر صورتی
+          // ==========================================
+          margin: const EdgeInsets.fromLTRB(16, 5, 16, 4), // حاشیه‌ها کمتر شد تا به استاتوس بار بچسبد
           decoration: const BoxDecoration(
               borderRadius: BorderRadius.all(Radius.circular(8)),
               gradient: LinearGradient(
@@ -443,7 +411,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   Color.fromARGB(255, 244, 114, 124),
                 ],
               )),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // ضخامت (vertical) کم شد تا نازک‌تر شود
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -455,16 +423,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 15),
-                ).marginOnly(bottom: 6),
+                ).marginOnly(bottom: 4),
               if (content.isNotEmpty)
                 Text(
                   translate(content),
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                       height: 1.5,
                       color: Colors.white,
                       fontWeight: FontWeight.normal,
                       fontSize: 13),
-                ).marginOnly(bottom: 20),
+                ).marginOnly(bottom: 10), // فاصله با دکمه کمتر شد
               if (btnText.isNotEmpty)
                 FixedWidthButton(
                   width: 150,
@@ -473,8 +442,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   text: translate(btnText),
                   textColor: Colors.white,
                   borderColor: Colors.white,
-                  textSize: 20,
-                  radius: 10,
+                  textSize: 18, // فونت دکمه کمی کوچکتر شد تا در کادر نازک جا شود
+                  radius: 8,
                   onTap: onPressed,
                 )
             ],
@@ -482,8 +451,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         ),
         if (closeButton == true)
           Positioned(
-            top: 25,
-            right: 45,
+            top: 15,
+            right: 25,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 20),
               onPressed: closeCard,
@@ -494,184 +463,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   @override
-  void initState() {
-    super.initState();
-    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
-      await gFFI.serverModel.fetchID();
-      final error = await bind.mainGetError();
-      if (systemError != error) {
-        systemError = error;
-        setState(() {});
-      }
-      final v = await mainGetBoolOption(kOptionStopService);
-      if (v != svcStopped.value) {
-        svcStopped.value = v;
-        setState(() {});
-      }
-      if (watchIsCanScreenRecording) {
-        if (bind.mainIsCanScreenRecording(prompt: false)) {
-          watchIsCanScreenRecording = false;
-          setState(() {});
-        }
-      }
-      if (watchIsProcessTrust) {
-        if (bind.mainIsProcessTrusted(prompt: false)) {
-          watchIsProcessTrust = false;
-          setState(() {});
-        }
-      }
-      if (watchIsInputMonitoring) {
-        if (bind.mainIsCanInputMonitoring(prompt: false)) {
-          watchIsInputMonitoring = false;
-          setState(() {});
-        }
-      }
-      if (watchIsCanRecordAudio) {
-        if (isMacOS) {
-          Future.microtask(() async {
-            if ((await osxCanRecordAudio() ==
-                PermissionAuthorizeType.authorized)) {
-              watchIsCanRecordAudio = false;
-              setState(() {});
-            }
-          });
-        } else {
-          watchIsCanRecordAudio = false;
-          setState(() {});
-        }
-      }
-    });
-    Get.put<RxBool>(svcStopped, tag: 'stop-service');
-    rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
-
-    screenToMap(window_size.Screen screen) => {
-          'frame': {
-            'l': screen.frame.left,
-            't': screen.frame.top,
-            'r': screen.frame.right,
-            'b': screen.frame.bottom,
-          },
-          'visibleFrame': {
-            'l': screen.visibleFrame.left,
-            't': screen.visibleFrame.top,
-            'r': screen.visibleFrame.right,
-            'b': screen.visibleFrame.bottom,
-          },
-          'scaleFactor': screen.scaleFactor,
-        };
-
-    bool isChattyMethod(String methodName) {
-      switch (methodName) {
-        case kWindowBumpMouse: return true;
-      }
-      return false;
-    }
-
-    rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
-      if (!isChattyMethod(call.method)) {
-        debugPrint(
-          "[Main] call ${call.method} with args ${call.arguments} from window $fromWindowId");
-      }
-      if (call.method == kWindowMainWindowOnTop) {
-        windowOnTop(null);
-      } else if (call.method == kWindowRefreshCurrentUser) {
-        gFFI.userModel.refreshCurrentUser();
-      } else if (call.method == kWindowGetWindowInfo) {
-        final screen = (await window_size.getWindowInfo()).screen;
-        if (screen == null) {
-          return '';
-        } else {
-          return jsonEncode(screenToMap(screen));
-        }
-      } else if (call.method == kWindowGetScreenList) {
-        return jsonEncode(
-            (await window_size.getScreenList()).map(screenToMap).toList());
-      } else if (call.method == kWindowActionRebuild) {
-        reloadCurrentWindow();
-      } else if (call.method == kWindowEventShow) {
-        await rustDeskWinManager.registerActiveWindow(call.arguments["id"]);
-      } else if (call.method == kWindowEventHide) {
-        await rustDeskWinManager.unregisterActiveWindow(call.arguments['id']);
-      } else if (call.method == kWindowConnect) {
-        await connectMainDesktop(
-          call.arguments['id'],
-          isFileTransfer: call.arguments['isFileTransfer'],
-          isViewCamera: call.arguments['isViewCamera'],
-          isTerminal: call.arguments['isTerminal'],
-          isTcpTunneling: call.arguments['isTcpTunneling'],
-          isRDP: call.arguments['isRDP'],
-          password: call.arguments['password'],
-          forceRelay: call.arguments['forceRelay'],
-          connToken: call.arguments['connToken'],
-        );
-      } else if (call.method == kWindowBumpMouse) {
-        return RdPlatformChannel.instance.bumpMouse(
-          dx: call.arguments['dx'],
-          dy: call.arguments['dy']);
-      } else if (call.method == kWindowEventMoveTabToNewWindow) {
-        final args = call.arguments.split(',');
-        int? windowId;
-        try {
-          windowId = int.parse(args[0]);
-        } catch (e) {
-          debugPrint("Failed to parse window id '${call.arguments}': $e");
-        }
-        WindowType? windowType;
-        try {
-          windowType = WindowType.values.byName(args[3]);
-        } catch (e) {
-          debugPrint("Failed to parse window type '${call.arguments}': $e");
-        }
-        if (windowId != null && windowType != null) {
-          await rustDeskWinManager.moveTabToNewWindow(
-              windowId, args[1], args[2], windowType);
-        }
-      } else if (call.method == kWindowEventOpenMonitorSession) {
-        final args = jsonDecode(call.arguments);
-        final windowId = args['window_id'] as int;
-        final peerId = args['peer_id'] as String;
-        final display = args['display'] as int;
-        final displayCount = args['display_count'] as int;
-        final windowType = args['window_type'] as int;
-        final screenRect = parseParamScreenRect(args);
-        await rustDeskWinManager.openMonitorSession(
-            windowId, peerId, display, displayCount, screenRect, windowType);
-      } else if (call.method == kWindowEventRemoteWindowCoords) {
-        final windowId = int.tryParse(call.arguments);
-        if (windowId != null) {
-          return jsonEncode(
-              await rustDeskWinManager.getOtherRemoteWindowCoords(windowId));
-        }
-      }
-    });
-    _uniLinksSubscription = listenUniLinks();
-
-    if (bind.isIncomingOnly()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _updateWindowSize();
-      });
-    }
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  _updateWindowSize() {
-    RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
-    if (renderObject == null) {
-      return;
-    }
-    if (renderObject is RenderBox) {
-      final size = renderObject.size;
-      if (size != imcomingOnlyHomeSize) {
-        imcomingOnlyHomeSize = size;
-        windowManager.setSize(getIncomingOnlyHomeSize());
-      }
-    }
-  }
-
-  @override
   void dispose() {
     _uniLinksSubscription?.cancel();
-    Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -683,21 +476,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (state == AppLifecycleState.resumed) {
       shouldBeBlocked(_block, canBeBlocked);
     }
-  }
-
-  Widget buildPluginEntry() {
-    final entries = PluginUiManager.instance.entries.entries;
-    return Offstage(
-      offstage: entries.isEmpty,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...entries.map((entry) {
-            return entry.value;
-          })
-        ],
-      ),
-    );
   }
 }
 

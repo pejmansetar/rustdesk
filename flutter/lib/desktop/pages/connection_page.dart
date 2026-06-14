@@ -30,23 +30,12 @@ class OnlineStatusWidget extends StatefulWidget {
   State<OnlineStatusWidget> createState() => _OnlineStatusWidgetState();
 }
 
-/// State for the connection page.
 class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   final _svcStopped = Get.find<RxBool>(tag: 'stop-service');
-  final _svcIsUsingPublicServer = true.obs;
   Timer? _updateTimer;
 
   double get em => 14.0;
   double? get height => bind.isIncomingOnly() ? null : em * 3;
-
-  void onUsePublicServerGuide() {
-    const url = "https://rustdesk.com/pricing";
-    canLaunchUrlString(url).then((can) {
-      if (can) {
-        launchUrlString(url);
-      }
-    });
-  }
 
   @override
   void initState() {
@@ -65,49 +54,8 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   @override
   Widget build(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
-    startServiceWidget() => Offstage(
-          offstage: !_svcStopped.value,
-          child: InkWell(
-                  onTap: () async {
-                    await start_service(true);
-                  },
-                  child: Text(translate("Start service"),
-                      style: TextStyle(
-                          decoration: TextDecoration.underline, fontSize: em)))
-              .marginOnly(left: em),
-        );
 
-    setupServerWidget() => Flexible(
-          child: Offstage(
-            offstage: !(!_svcStopped.value &&
-                stateGlobal.svcStatus.value == SvcStatus.ready &&
-                _svcIsUsingPublicServer.value),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(', ', style: TextStyle(fontSize: em)),
-                Flexible(
-                  child: InkWell(
-                    onTap: onUsePublicServerGuide,
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            translate('setup_server_tip'),
-                            style: TextStyle(
-                                decoration: TextDecoration.underline,
-                                fontSize: em),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              ],
-            ),
-          ),
-        );
-
+    // Customization: Simplified Status Bar (Only Ready dot and text)
     basicWidget() => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -128,24 +76,12 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
               width: isIncomingOnly ? 226 : null,
               child: _buildConnStatusMsg(),
             ),
-            if (!isIncomingOnly) startServiceWidget(),
-            if (!isIncomingOnly) setupServerWidget(),
           ],
         );
 
     return Container(
       height: height,
-      child: Obx(() => isIncomingOnly
-          ? Column(
-              children: [
-                basicWidget(),
-                Align(
-                        child: startServiceWidget(),
-                        alignment: Alignment.centerLeft)
-                    .marginOnly(top: 2.0, left: 22.0),
-              ],
-            )
-          : basicWidget()),
+      child: basicWidget(),
     ).paddingOnly(right: isIncomingOnly ? 8 : 0);
   }
 
@@ -176,16 +112,17 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
     } else {
       stateGlobal.svcStatus.value = SvcStatus.notReady;
     }
-    _svcIsUsingPublicServer.value = await bind.mainIsUsingPublicServer();
     try {
       stateGlobal.videoConnCount.value = status['video_conn_count'] as int;
     } catch (_) {}
   }
 }
 
-/// Connection page for connecting to a remote peer.
 class ConnectionPage extends StatefulWidget {
-  const ConnectionPage({Key? key}) : super(key: key);
+  final Widget? topContent;
+  final Widget? bottomContent;
+
+  const ConnectionPage({Key? key, this.topContent, this.bottomContent}) : super(key: key);
 
   @override
   State<ConnectionPage> createState() => _ConnectionPageState();
@@ -288,20 +225,20 @@ class _ConnectionPageState extends State<ConnectionPage>
   Widget build(BuildContext context) {
     final isOutgoingOnly = bind.isOutgoingOnly();
     
-    // ========================================================
-    // Customization: Remotik Layout (Top Bar + Expanded History)
-    // ========================================================
     return Column(
       children: [
-        // 1. Top Navigation / Connect Bar
         _buildTopConnectBar(context),
         
-        // 2. History & Recent Sessions (takes remaining space)
+        if (widget.topContent != null) widget.topContent!,
+
+        const Divider(height: 1),
+
         Expanded(
           child: PeerTabPage().paddingSymmetric(horizontal: 12.0),
         ),
 
-        // 3. Status Bar at the bottom
+        if (widget.bottomContent != null) widget.bottomContent!,
+
         if (!isOutgoingOnly) const Divider(height: 1),
         if (!isOutgoingOnly) OnlineStatusWidget()
       ],
@@ -319,26 +256,18 @@ class _ConnectionPageState extends State<ConnectionPage>
         isTerminal: isTerminal);
   }
 
-  // ========================================================
-  // Customization: Horizontal Top Bar for Address Input
-  // ========================================================
   Widget _buildTopConnectBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.5)),
-        )
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Settings Gear Icon (Matches your corporate image)
           Icon(Icons.settings, color: Colors.grey.shade600, size: 24),
           const SizedBox(width: 15),
 
-          // Autocomplete Address Input Field
           Expanded(
             child: RawAutocomplete<Peer>(
               optionsBuilder: (TextEditingValue textEditingValue) {
@@ -406,7 +335,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                         counterText: '',
                         hintText: _idInputFocused.value
                             ? null
-                            : translate('Enter Remote ID'), // Custom hint text
+                            : translate('Enter remote ID'),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 15, vertical: 10)),
                     controller: fieldTextEditingController,
@@ -491,12 +420,11 @@ class _ConnectionPageState extends State<ConnectionPage>
           
           const SizedBox(width: 15),
 
-          // Connect Button
           SizedBox(
             height: 40.0,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0078D7), // Windows Blue
+                backgroundColor: const Color(0xFF0078D7),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6)
@@ -511,7 +439,6 @@ class _ConnectionPageState extends State<ConnectionPage>
           ),
           const SizedBox(width: 5),
 
-          // Dropdown More options
           Container(
             height: 40.0,
             width: 35.0,
