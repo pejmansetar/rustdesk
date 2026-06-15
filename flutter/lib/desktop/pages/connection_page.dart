@@ -7,7 +7,6 @@ import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
 import '../../common/formatter/id_formatter.dart'; 
 import '../../common/widgets/peer_tab_page.dart';
-// ایمپورت صفحه تنظیمات برای چرخدنده اضافه شد
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 
 class ConnectionPage extends StatefulWidget {
@@ -39,10 +38,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
           _buildTopConnectBar(context),
           if (widget.topContent != null) widget.topContent!,
           const Divider(height: 1),
-          // قرار دادن لیست سیستم‌ها (Sessions) درون Padding برای فاصله داشتن از کناره‌ها
+          // بخش لیست سیستم‌ها 
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0), // هم‌تراز با باکس اینستال
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: const PeerTabPage(),
             ),
           ),
@@ -58,9 +57,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          // تبدیل آیکون ساده به دکمه تنظیمات (همراه با تغییر کرسر موس)
+          // دکمه چرخ‌دنده با هدایت مستقیم به تب General
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey),
+            icon: const Icon(Icons.settings, color: Colors.grey, size: 24),
             splashRadius: 20,
             tooltip: translate('Settings'),
             onPressed: () => DesktopSettingPage.switch2page(SettingsTabKey.general),
@@ -80,67 +79,62 @@ class _ConnectionPageState extends State<ConnectionPage> {
             ),
           ),
           const SizedBox(width: 15),
-          // ساختار دکمه Connect به همراه فلش منوی کشویی (Split-Button)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0078D7), 
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.horizontal(left: Radius.circular(6)), // لبه گرد فقط برای سمت چپ
+          
+          // دکمه Connect و منوی دقیقاً مشابه ظاهر اصلی (با توابع نیتیو Rust)
+          Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0078D7), 
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
+                    onPressed: () => connect(context, _idController.id),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Center(
+                        child: Text(translate("Connect"), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                      ),
+                    ),
                   ),
                 ),
-                onPressed: () => connect(context, _idController.id),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Text(translate("Connect")),
-                ),
-              ),
-              Container(
-                height: 32, // تنظیم ارتفاع برای هم‌اندازه شدن با دکمه اصلی
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0061AE), // کمی تیره‌تر برای تمایز قسمت فلش
-                  borderRadius: BorderRadius.horizontal(right: Radius.circular(6)), // لبه گرد فقط برای سمت راست
-                ),
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    splashColor: Colors.transparent,
-                    highlightColor: Colors.transparent,
-                  ),
-                  child: PopupMenuButton<String>(
-                    icon: const Icon(Icons.arrow_drop_down, color: Colors.white, size: 20),
-                    tooltip: translate('More Options'),
-                    offset: const Offset(0, 36),
-                    onSelected: (String result) {
-                      if (result == 'file') {
-                        connect(context, _idController.id, isFileTransfer: true);
-                      } else if (result == 'camera') {
-                        connect(context, _idController.id, isViewCamera: true);
-                      } else if (result == 'terminal') {
-                        connect(context, _idController.id, isTerminal: true);
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                      PopupMenuItem<String>(
-                        value: 'file',
-                        child: Text(translate('File Transfer')),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'camera',
-                        child: Text(translate('View Camera')),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'terminal',
-                        child: Text(translate('Terminal (Beta)')),
-                      ),
-                    ],
+                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 24), 
+                Material(
+                  color: Colors.transparent,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      splashColor: Colors.transparent, highlightColor: Colors.transparent,
+                    ),
+                    child: PopupMenuButton<String>(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                      tooltip: translate('More Options'),
+                      offset: const Offset(0, 40),
+                      onSelected: (String result) {
+                        // این متدها دقیقاً دستورات نسخه 1.4.7 هستند و الکی نیستند.
+                        if (result == 'file') {
+                          connect(context, _idController.id, isFileTransfer: true);
+                        } else if (result == 'camera') {
+                          connect(context, _idController.id, isViewCamera: true);
+                        } else if (result == 'terminal') {
+                          connect(context, _idController.id, isTerminal: true);
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),
+                        PopupMenuItem<String>(value: 'camera', child: Text(translate('View Camera'))),
+                        PopupMenuItem<String>(value: 'terminal', child: Text(translate('Terminal (Beta)'))),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

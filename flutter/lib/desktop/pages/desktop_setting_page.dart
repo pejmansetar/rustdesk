@@ -404,10 +404,15 @@ class _General extends StatefulWidget {
 }
 
 class _GeneralState extends State<_General> {
-  final RxBool serviceStop =
-      isWeb ? RxBool(false) : Get.find<RxBool>(tag: 'stop-service');
+  // فیکس مشکل سفیدی صفحه: بررسی ایمن متغیر برای جلوگیری از کرش فلاتر
+  final RxBool serviceStop = isWeb 
+      ? RxBool(false) 
+      : (Get.isRegistered<RxBool>(tag: 'stop-service') 
+          ? Get.find<RxBool>(tag: 'stop-service') 
+          : RxBool(false));
+          
   RxBool serviceBtnEnabled = true.obs;
-
+  
   @override
   Widget build(BuildContext context) {
     final scrollController = ScrollController();

@@ -22,10 +22,7 @@ import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:window_size/window_size.dart' as window_size;
-import '../widgets/button.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -43,17 +40,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var systemError = '';
   StreamSubscription? _uniLinksSubscription;
   var svcStopped = false.obs;
-  var watchIsCanScreenRecording = false;
-  var watchIsProcessTrust = false;
-  var watchIsInputMonitoring = false;
-  var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
   bool isCardClosed = false;
 
   final RxBool _block = false.obs;
   final GlobalKey _childKey = GlobalKey();
 
-  // بخش بنرهای آنلاین پاصک
   Map<String, dynamic> bannerData = {};
 
   Future<void> _fetchBannerData() async {
@@ -79,7 +71,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // --- تمام کدهای بک‌أند اصلی شما حفظ شد ---
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
@@ -97,7 +88,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       } else if (call.method == kWindowActionRebuild) {
         reloadCurrentWindow();
       } else if (call.method == kWindowConnect) {
-        // فیکس ارور isFileTransfer: اضافه کردن تمام پارامترهای اجباری نسخه 1.4.7
         await connectMainDesktop(
           call.arguments['id'],
           isFileTransfer: call.arguments['isFileTransfer'] ?? false,
@@ -121,25 +111,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.build(context);
     final isOutgoingOnly = bind.isOutgoingOnly();
 
-    // ۱. محتوای بالایی: آیدی، پسورد و جایگاه بنرها
     Widget topUI = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (!isOutgoingOnly)
           Padding(
-            padding: const EdgeInsets.only(top: 25, bottom: 5),
+            padding: const EdgeInsets.only(top: 20, bottom: 5),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: _buildDynamicBanner(bannerData['top_left']?['image'], bannerData['top_left']?['link'])),
-                Column(
-                  children: [
-                    buildCorporateIDBoard(context),
-                    const SizedBox(height: 10),
-                    buildCorporatePasswordBoard(context),
-                  ],
-                ),
-                Expanded(child: _buildDynamicBanner(bannerData['top_right']?['image'], bannerData['top_right']?['link'])),
+                Expanded(child: _buildSimpleBanner(bannerData['top_left'])),
+                buildCombinedIDPassCard(context),
+                Expanded(child: _buildSimpleBanner(bannerData['top_right'])),
               ],
             ),
           ),
@@ -147,7 +130,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       ],
     );
 
-    // ۲. محتوای پایینی: باکس صورتی نازک
     Widget bottomUI = Obx(() => buildHelpCards(stateGlobal.updateUrl.value));
 
     return _buildBlock(
@@ -165,71 +147,101 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return buildRemoteBlock(block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  Widget _buildDynamicBanner(String? imageUrl, String? linkUrl) {
-    if (imageUrl == null || imageUrl.isEmpty) return const SizedBox.shrink();
-    // استفاده از InkWell برای فعال شدن کرسر دست روی عکس‌ها
+  Widget _buildSimpleBanner(Map<String, dynamic>? data) {
+    if (data == null || data['image'] == null || data['image'].toString().isEmpty) return const SizedBox.shrink();
     return InkWell(
-      onTap: () => linkUrl != null ? launchUrlString(linkUrl) : null,
-      hoverColor: Colors.transparent,
-      splashColor: Colors.transparent,
-      highlightColor: Colors.transparent,
-      child: Image.network(imageUrl, height: 95, fit: BoxFit.contain,
-          errorBuilder: (c, e, s) => const SizedBox.shrink()),
+      onTap: () => data['link'] != null ? launchUrlString(data['link']) : null,
+      hoverColor: Colors.transparent, splashColor: Colors.transparent, highlightColor: Colors.transparent,
+      child: Image.network(data['image'], height: 95, fit: BoxFit.contain, errorBuilder: (c, e, s) => const SizedBox.shrink()),
     );
   }
 
-  Widget buildCorporateIDBoard(BuildContext context) {
-    final model = gFFI.serverModel;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(translate("ID"), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(width: 15),
-        Container(
-          width: 340, padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.12), 
-            borderRadius: BorderRadius.circular(4),
-            // اضافه شدن کادر عمودی و افقی (کامل) به باکس ID
-            border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
-          ),
-          child: TextFormField(
-            controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Color(0xFFE53935), letterSpacing: 1.5),
-            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget buildCorporatePasswordBoard(BuildContext context) {
+  Widget buildCombinedIDPassCard(BuildContext context) {
     return Consumer<ServerModel>(
       builder: (context, model, child) {
         final showOneTime = model.approveMode != 'click' && model.verificationMethod != kUsePermanentPassword;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(translate("One-time"), style: TextStyle(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.5))),
-            const SizedBox(width: 15),
-            Container(
-              width: 340, padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.12), 
-                borderRadius: BorderRadius.circular(4),
-                // اضافه شدن کادر عمودی و افقی (کامل) به باکس پسورد
-                border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 25),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, spreadRadius: 2, offset: const Offset(0, 5)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ردیف ID (کلمه Your حذف شد و دقیقاً شد ID)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 70,
+                    child: Text(translate("ID"), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white, borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.grey.withOpacity(0.4), width: 1),
+                    ),
+                    child: TextFormField(
+                      controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFE53935), letterSpacing: 2.0),
+                      decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                    ),
+                  ),
+                  const SizedBox(width: 70), 
+                ],
               ),
-              child: TextFormField(
-                controller: model.serverPasswd, readOnly: true, textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+              const SizedBox(height: 15),
+              // ردیف One-time
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 70,
+                    child: Text(translate("One-time"), style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7))),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+                    ),
+                    child: TextFormField(
+                      controller: model.serverPasswd, readOnly: true, textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 15, letterSpacing: 1.0),
+                      decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    width: 60,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        if (showOneTime) 
+                          InkWell(
+                            onTap: () => bind.mainUpdateTemporaryPassword(),
+                            child: const Padding(padding: EdgeInsets.all(4.0), child: Icon(Icons.refresh, size: 18)),
+                          ),
+                        const SizedBox(width: 5),
+                        InkWell(
+                          onTap: () => DesktopSettingPage.switch2page(SettingsTabKey.safety),
+                          child: const Padding(padding: EdgeInsets.all(4.0), child: Icon(Icons.edit, size: 18)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            if (showOneTime) IconButton(icon: const Icon(Icons.refresh, size: 18), onPressed: () => bind.mainUpdateTemporaryPassword()),
-            IconButton(icon: const Icon(Icons.edit, size: 18), onPressed: () => DesktopSettingPage.switch2page(SettingsTabKey.safety)),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -238,25 +250,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
     
-    // پشتیبانی تا ۱۰ جایگاه برای عکس‌ها (bottom_1 تا bottom_10)
     for (int i = 1; i <= 10; i++) {
       String key = 'bottom_$i';
-      if (bannerData.containsKey(key) && bannerData[key]?['image'] != null) {
+      if (bannerData.containsKey(key) && bannerData[key]?['image'] != null && bannerData[key]['image'].toString().isNotEmpty) {
         bannerWidgets.add(
-          _buildDynamicBanner(bannerData[key]['image'], bannerData[key]['link'])
+          DynamicBannerWidget(data: bannerData[key])
         );
       }
     }
 
     if (bannerWidgets.isEmpty) return const SizedBox.shrink();
 
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-      // حذف ارتفاع ثابت برای چیدمان بهینه (Wrap)
       child: Wrap(
         alignment: WrapAlignment.center,
-        spacing: 20.0, // فاصله افقی بین عکس‌ها
-        runSpacing: 15.0, // فاصله عمودی بین عکس‌ها در صورت رفتن به خط بعد
+        spacing: 15.0, runSpacing: 15.0,
         children: bannerWidgets,
       ),
     );
@@ -273,16 +282,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildInstallCard(String title, String content, String btnText, VoidCallback onPressed) {
     if (isCardClosed) return const SizedBox.shrink();
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 2, 16, 2), // مارجین ۱۶ پیکسلی از کناره‌ها
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(6)),
-          gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
+          color: Color(0xFFD32F2F)), 
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(child: Text(translate(content), style: const TextStyle(color: Colors.white, fontSize: 12))),
-          ElevatedButton(onPressed: onPressed, child: Text(translate(btnText))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
+            onPressed: onPressed, child: Text(translate(btnText))),
           IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 16), onPressed: () => setState(() => isCardClosed = true))
         ],
       ),
@@ -295,20 +306,78 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 }
 
-// تابع دیالوگ پسورد بدون تغییر
+class DynamicBannerWidget extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const DynamicBannerWidget({Key? key, required this.data}) : super(key: key);
+
+  @override
+  State<DynamicBannerWidget> createState() => _DynamicBannerWidgetState();
+}
+
+class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
+  bool isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    String imageUrl = widget.data['image'] ?? '';
+    String linkUrl = widget.data['link'] ?? '';
+    String text = widget.data['text'] ?? '';
+    int mode = widget.data['overlay_mode'] ?? 0; 
+
+    if (imageUrl.isEmpty) return const SizedBox.shrink();
+
+    bool showOverlay = false;
+    bool isFullCover = (mode == 2 || mode == 4);
+
+    if (mode == 1 || mode == 2) {
+      showOverlay = true; 
+    } else if (mode == 3 || mode == 4) {
+      showOverlay = isHovered; 
+    }
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => isHovered = true),
+      onExit: (_) => setState(() => isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => linkUrl.isNotEmpty ? launchUrlString(linkUrl) : null,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 140, height: 95, 
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox.shrink()),
+                if (text.isNotEmpty && mode != 0)
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    bottom: showOverlay ? 0 : (isFullCover ? -95 : -35),
+                    left: 0, right: 0,
+                    height: isFullCover ? 95 : 30,
+                    child: Container(
+                      alignment: Alignment.center,
+                      color: Colors.black.withOpacity(isFullCover ? 0.7 : 0.6),
+                      child: Text(
+                        text,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
   final p0 = TextEditingController(text: "");
   final p1 = TextEditingController(text: "");
-  var errMsg0 = "";
-  var errMsg1 = "";
-  final localPasswordSet = (await bind.mainGetCommon(key: "local-permanent-password-set")) == "true";
-  final permanentPasswordSet = (await bind.mainGetCommon(key: "permanent-password-set")) == "true";
-  final presetPassword = permanentPasswordSet && !localPasswordSet;
-  var canSubmit = false;
-  final RxString rxPass = "".obs;
-  final rules = [DigitValidationRule(), UppercaseValidationRule(), LowercaseValidationRule(), MinCharactersValidationRule(8)];
-  final maxLength = bind.mainMaxEncryptLen();
-
   gFFI.dialogManager.show((setState, close, context) {
     submit() async {
       if (p0.text.trim().isEmpty) return;
