@@ -5,6 +5,7 @@ import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
+import '../../common/formatter/id_formatter.dart'; // این خط اضافه شد
 import '../../common/widgets/peer_tab_page.dart';
 
 class ConnectionPage extends StatefulWidget {
