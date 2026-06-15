@@ -12,9 +12,10 @@ import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
+import 'package:flutter_hbb/desktop/widgets/update_progress.dart'; // <-- این خط اضافه شد
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_hbb/models/state_model.dart'; // <-- این خط اضافه شد (عامل اصلی ارور)
 import 'package:flutter_hbb/plugin/ui_manager.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
@@ -52,10 +53,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   final RxBool _block = false.obs;
   final GlobalKey _childKey = GlobalKey();
 
-  // متغیر برای ذخیره اطلاعات بنرها از سمت سرور پاصک
   Map<String, dynamic> bannerData = {};
 
-  // تابعی که JSON را از سرور می‌خواند
   Future<void> _fetchBannerData() async {
     try {
       final url = Uri.parse('https://passak.org/php/remotik-banner.php');
@@ -398,10 +397,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     return Stack(
       children: [
         Container(
-          // ==========================================
-          // CUSTOMIZATION: نازک‌تر شدن و تمام‌عرض شدن کادر صورتی
-          // ==========================================
-          margin: const EdgeInsets.fromLTRB(16, 5, 16, 4), // حاشیه‌ها کمتر شد تا به استاتوس بار بچسبد
+          margin: const EdgeInsets.fromLTRB(16, 5, 16, 4),
           decoration: const BoxDecoration(
               borderRadius: BorderRadius.all(Radius.circular(8)),
               gradient: LinearGradient(
@@ -412,7 +408,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   Color.fromARGB(255, 244, 114, 124),
                 ],
               )),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // ضخامت (vertical) کم شد تا نازک‌تر شود
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -434,7 +430,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       color: Colors.white,
                       fontWeight: FontWeight.normal,
                       fontSize: 13),
-                ).marginOnly(bottom: 10), // فاصله با دکمه کمتر شد
+                ).marginOnly(bottom: 10), 
               if (btnText.isNotEmpty)
                 FixedWidthButton(
                   width: 150,
@@ -443,7 +439,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                   text: translate(btnText),
                   textColor: Colors.white,
                   borderColor: Colors.white,
-                  textSize: 18, // فونت دکمه کمی کوچکتر شد تا در کادر نازک جا شود
+                  textSize: 18,
                   radius: 8,
                   onTap: onPressed,
                 )
