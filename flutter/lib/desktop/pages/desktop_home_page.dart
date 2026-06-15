@@ -121,7 +121,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.build(context);
     final isOutgoingOnly = bind.isOutgoingOnly();
 
-    // ۱. محتوای بالایی: آیدی، پسورد و ۵ جایگاه بنر (طبق فوتوشاپ)
+    // ۱. محتوای بالایی: آیدی، پسورد و جایگاه بنرها
     Widget topUI = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -167,8 +167,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Widget _buildDynamicBanner(String? imageUrl, String? linkUrl) {
     if (imageUrl == null || imageUrl.isEmpty) return const SizedBox.shrink();
-    return GestureDetector(
+    // استفاده از InkWell برای فعال شدن کرسر دست روی عکس‌ها
+    return InkWell(
       onTap: () => linkUrl != null ? launchUrlString(linkUrl) : null,
+      hoverColor: Colors.transparent,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       child: Image.network(imageUrl, height: 95, fit: BoxFit.contain,
           errorBuilder: (c, e, s) => const SizedBox.shrink()),
     );
@@ -183,7 +187,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         const SizedBox(width: 15),
         Container(
           width: 340, padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.12), 
+            borderRadius: BorderRadius.circular(4),
+            // اضافه شدن کادر عمودی و افقی (کامل) به باکس ID
+            border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+          ),
           child: TextFormField(
             controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Color(0xFFE53935), letterSpacing: 1.5),
@@ -205,7 +214,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             const SizedBox(width: 15),
             Container(
               width: 340, padding: const EdgeInsets.symmetric(vertical: 6),
-              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.12), 
+                borderRadius: BorderRadius.circular(4),
+                // اضافه شدن کادر عمودی و افقی (کامل) به باکس پسورد
+                border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+              ),
               child: TextFormField(
                 controller: model.serverPasswd, readOnly: true, textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
@@ -222,18 +236,28 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Widget buildBannersRow() {
+    List<Widget> bannerWidgets = [];
+    
+    // پشتیبانی تا ۱۰ جایگاه برای عکس‌ها (bottom_1 تا bottom_10)
+    for (int i = 1; i <= 10; i++) {
+      String key = 'bottom_$i';
+      if (bannerData.containsKey(key) && bannerData[key]?['image'] != null) {
+        bannerWidgets.add(
+          _buildDynamicBanner(bannerData[key]['image'], bannerData[key]['link'])
+        );
+      }
+    }
+
+    if (bannerWidgets.isEmpty) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-      height: 110,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(child: _buildDynamicBanner(bannerData['bottom_1']?['image'], bannerData['bottom_1']?['link'])),
-          const SizedBox(width: 15),
-          Expanded(child: _buildDynamicBanner(bannerData['bottom_2']?['image'], bannerData['bottom_2']?['link'])),
-          const SizedBox(width: 15),
-          Expanded(child: _buildDynamicBanner(bannerData['bottom_3']?['image'], bannerData['bottom_3']?['link'])),
-        ],
+      // حذف ارتفاع ثابت برای چیدمان بهینه (Wrap)
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 20.0, // فاصله افقی بین عکس‌ها
+        runSpacing: 15.0, // فاصله عمودی بین عکس‌ها در صورت رفتن به خط بعد
+        children: bannerWidgets,
       ),
     );
   }
@@ -249,7 +273,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget buildInstallCard(String title, String content, String btnText, VoidCallback onPressed) {
     if (isCardClosed) return const SizedBox.shrink();
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 2), // مارجین ۱۶ پیکسلی از کناره‌ها
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(6)),
           gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
@@ -271,7 +295,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 }
 
-// تابع دیالوگ پسورد (همان کد کامل خودت)
+// تابع دیالوگ پسورد بدون تغییر
 void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
   final p0 = TextEditingController(text: "");
   final p1 = TextEditingController(text: "");
