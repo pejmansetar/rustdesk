@@ -60,7 +60,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          // دکمه چرخ‌دنده با هدایت مستقیم به تب General
+          // دکمه چرخ‌دنده
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey, size: 24),
             splashRadius: 20,
@@ -83,7 +83,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 15),
           
-          // دکمه Connect و منوی کشویی
+          // دکمه Connect و منوی کشویی بهینه‌شده
           Container(
             height: 36,
             decoration: BoxDecoration(
@@ -93,6 +93,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // بخش دکمه اصلی Connect
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -111,22 +112,41 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   ),
                 ),
                 Container(width: 1, color: Colors.white.withOpacity(0.3), height: 24), 
+                
+                // بخش فلش کشویی (حل مشکل تداخل Context با showMenu)
                 Material(
                   color: Colors.transparent,
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      splashColor: Colors.transparent, highlightColor: Colors.transparent,
-                    ),
-                    child: PopupMenuButton<String>(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                      tooltip: translate('More Options'),
-                      offset: const Offset(0, 40),
-                      onSelected: (String result) {
-                        if (_cleanId.isEmpty) return; // اگر آیدی خالی بود کاری نکن
+                  child: Builder(
+                    builder: (buttonContext) => InkWell(
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                      onTap: () async {
+                        if (_cleanId.isEmpty) return; // اگر آیدی خالیه منو باز نشه
                         
-                        // تاخیر کوتاه برای جلوگیری از تداخل بسته شدن منو با باز شدن پنجره جدید
-                        Future.delayed(const Duration(milliseconds: 150), () {
+                        // پیدا کردن موقعیت دقیق فلش برای باز شدن منو در جای درست
+                        final RenderBox button = buttonContext.findRenderObject() as RenderBox;
+                        final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+                        final RelativeRect position = RelativeRect.fromRect(
+                          Rect.fromPoints(
+                            button.localToGlobal(Offset(0, button.size.height), ancestor: overlay),
+                            button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                          ),
+                          Offset.zero & overlay.size,
+                        );
+
+                        // منتظر می‌مونیم تا کاربر انتخابش رو بکنه و منو کامل بسته بشه
+                        final result = await showMenu<String>(
+                          context: context,
+                          position: position,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          items: [
+                            PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),
+                            PopupMenuItem<String>(value: 'camera', child: Text(translate('View Camera'))),
+                            PopupMenuItem<String>(value: 'terminal', child: Text(translate('Terminal (Beta)'))),
+                          ],
+                        );
+
+                        // حالا که محیط امنه، دستور اصلی راست‌دسک رو شلیک می‌کنیم
+                        if (result != null) {
                           if (result == 'file') {
                             connect(context, _cleanId, isFileTransfer: true);
                           } else if (result == 'camera') {
@@ -134,13 +154,12 @@ class _ConnectionPageState extends State<ConnectionPage> {
                           } else if (result == 'terminal') {
                             connect(context, _cleanId, isTerminal: true);
                           }
-                        });
+                        }
                       },
-                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),
-                        PopupMenuItem<String>(value: 'camera', child: Text(translate('View Camera'))),
-                        PopupMenuItem<String>(value: 'terminal', child: Text(translate('Terminal (Beta)'))),
-                      ],
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6.0),
+                        child: Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
+                      ),
                     ),
                   ),
                 ),
@@ -151,7 +170,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       ),
     );
   }
-
+  
   Widget _buildStatusBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
