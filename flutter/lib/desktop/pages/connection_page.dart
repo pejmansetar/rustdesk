@@ -80,7 +80,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 15),
           
-          // دکمه Connect و منوی دقیقاً مشابه ظاهر اصلی (با توابع نیتیو Rust)
+          // دکمه Connect و منوی کشویی
           Container(
             height: 36,
             decoration: BoxDecoration(
@@ -94,7 +94,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
-                    onPressed: () => connect(context, _idController.id),
+                    onTap: () => connect(context, _idController.id), // <--- اینجا اصلاح شد (onPressed تبدیل شد به onTap)
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Center(
@@ -116,7 +116,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       tooltip: translate('More Options'),
                       offset: const Offset(0, 40),
                       onSelected: (String result) {
-                        // این متدها دقیقاً دستورات نسخه 1.4.7 هستند و الکی نیستند.
                         if (result == 'file') {
                           connect(context, _idController.id, isFileTransfer: true);
                         } else if (result == 'camera') {
