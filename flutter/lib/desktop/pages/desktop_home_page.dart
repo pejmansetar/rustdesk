@@ -116,7 +116,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       children: [
         if (!isOutgoingOnly)
           Padding(
-            padding: const EdgeInsets.only(top: 20, bottom: 5),
+            // فاصله از بالا کم شد تا کادر بیاد بالاتر
+            padding: const EdgeInsets.only(top: 8, bottom: 5),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -156,50 +157,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    final isOutgoingOnly = bind.isOutgoingOnly();
-
-    Widget topUI = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!isOutgoingOnly)
-          Padding(
-            // تغییر سوم: فاصله از بالا (top) از 20 به 8 کم شد تا کارت بیاد بالاتر
-            padding: const EdgeInsets.only(top: 8, bottom: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _buildSimpleBanner(bannerData['top_left'])),
-                buildCombinedIDPassCard(context),
-                Expanded(child: _buildSimpleBanner(bannerData['top_right'])),
-              ],
-            ),
-          ),
-        if (!isOutgoingOnly) buildBannersRow(),
-      ],
-    );
-
-    Widget bottomUI = Obx(() => buildHelpCards(stateGlobal.updateUrl.value));
-
-    return _buildBlock(
-      child: ChangeNotifierProvider.value(
-        value: gFFI.serverModel,
-        child: ConnectionPage(
-          topContent: topUI,
-          bottomContent: bottomUI,
-        ),
-      ),
-    );
-  }
-
-  // کارت یکپارچه ID و رمز (هوشمند برای Dark/Light Mode)
+  // کادر یکپارچه هوشمند (پشتیبانی از Dark/Light Mode و فواصل جدید)
   Widget buildCombinedIDPassCard(BuildContext context) {
-    // تشخیص دارک مود یا لایت مود بودن سیستم
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // تعریف رنگ‌ها بر اساس تم
     Color cardColor = isDark ? const Color(0xFF2B2D31) : Colors.white;
     Color boxColor = isDark ? const Color(0xFF1E1F22) : Colors.grey.withOpacity(0.08);
     Color labelColor = isDark ? const Color(0xFFB5BAC1) : Theme.of(context).textTheme.bodySmall!.color!.withOpacity(0.8);
@@ -230,14 +191,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 65, // عرض لیبل کم شد
+                    width: 65, 
                     child: Text(
                       translate("ID"), 
-                      textAlign: TextAlign.right, // متن به سمت باکس چسبید
+                      textAlign: TextAlign.right, 
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: labelColor)
                     ),
                   ),
-                  const SizedBox(width: 12), // فاصله دقیق و نزدیک
+                  const SizedBox(width: 12),
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
@@ -259,14 +220,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 65, // عرض لیبل کم شد
+                    width: 65,
                     child: Text(
                       translate("One-time"), 
-                      textAlign: TextAlign.right, // متن به سمت باکس چسبید
+                      textAlign: TextAlign.right, 
                       style: TextStyle(fontSize: 12, color: labelColor)
                     ),
                   ),
-                  const SizedBox(width: 12), // فاصله دقیق و نزدیک
+                  const SizedBox(width: 12),
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
@@ -306,7 +267,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       },
     );
   }
-  
+
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
     
@@ -345,14 +306,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(6)),
-          // برگشت به همون گرادیانت جذاب قبلی
           gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(child: Text(translate(content), style: const TextStyle(color: Colors.white, fontSize: 12))),
-          // دکمه به حالت آبی استاندارد خودش برگشت
           ElevatedButton(onPressed: onPressed, child: Text(translate(btnText))),
           IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 16), onPressed: () => setState(() => isCardClosed = true))
         ],
@@ -366,6 +325,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 }
 
+// ==========================================
+// ویجت هوشمند بنرهای ۴ حالته با انیمیشن (نسخه ایمن)
+// ==========================================
 class DynamicBannerWidget extends StatefulWidget {
   final Map<String, dynamic> data;
   const DynamicBannerWidget({Key? key, required this.data}) : super(key: key);
@@ -379,10 +341,10 @@ class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    String imageUrl = widget.data['image'] ?? '';
-    String linkUrl = widget.data['link'] ?? '';
-    String text = widget.data['text'] ?? '';
-    int mode = widget.data['overlay_mode'] ?? 0; 
+    String imageUrl = widget.data['image']?.toString() ?? '';
+    String linkUrl = widget.data['link']?.toString() ?? '';
+    String text = widget.data['text']?.toString() ?? '';
+    int mode = int.tryParse(widget.data['overlay_mode']?.toString() ?? '0') ?? 0;
 
     if (imageUrl.isEmpty) return const SizedBox.shrink();
 
@@ -409,6 +371,7 @@ class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
               fit: StackFit.expand,
               children: [
                 Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox.shrink()),
+                
                 if (text.isNotEmpty && mode != 0)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 250),
