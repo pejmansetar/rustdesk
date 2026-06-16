@@ -29,6 +29,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
     Get.put(_idController);
   }
 
+  // تابع کمکی برای گرفتن آیدی تمیز (بدون فاصله)
+  String get _cleanId => _idEditingController.text.trim().replaceAll(' ', '');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -94,7 +97,11 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
-                    onTap: () => connect(context, _idController.id), // <--- اینجا اصلاح شد (onPressed تبدیل شد به onTap)
+                    onTap: () {
+                      if (_cleanId.isNotEmpty) {
+                        connect(context, _cleanId);
+                      }
+                    }, 
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Center(
@@ -116,13 +123,18 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       tooltip: translate('More Options'),
                       offset: const Offset(0, 40),
                       onSelected: (String result) {
-                        if (result == 'file') {
-                          connect(context, _idController.id, isFileTransfer: true);
-                        } else if (result == 'camera') {
-                          connect(context, _idController.id, isViewCamera: true);
-                        } else if (result == 'terminal') {
-                          connect(context, _idController.id, isTerminal: true);
-                        }
+                        if (_cleanId.isEmpty) return; // اگر آیدی خالی بود کاری نکن
+                        
+                        // تاخیر کوتاه برای جلوگیری از تداخل بسته شدن منو با باز شدن پنجره جدید
+                        Future.delayed(const Duration(milliseconds: 150), () {
+                          if (result == 'file') {
+                            connect(context, _cleanId, isFileTransfer: true);
+                          } else if (result == 'camera') {
+                            connect(context, _cleanId, isViewCamera: true);
+                          } else if (result == 'terminal') {
+                            connect(context, _cleanId, isTerminal: true);
+                          }
+                        });
                       },
                       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                         PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),

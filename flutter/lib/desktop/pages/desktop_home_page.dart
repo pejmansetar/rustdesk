@@ -285,15 +285,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(6)),
-          color: Color(0xFFD32F2F)), 
+          // برگشت به همون گرادیانت جذاب قبلی
+          gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(child: Text(translate(content), style: const TextStyle(color: Colors.white, fontSize: 12))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-            onPressed: onPressed, child: Text(translate(btnText))),
+          // دکمه به حالت آبی استاندارد خودش برگشت
+          ElevatedButton(onPressed: onPressed, child: Text(translate(btnText))),
           IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 16), onPressed: () => setState(() => isCardClosed = true))
         ],
       ),
