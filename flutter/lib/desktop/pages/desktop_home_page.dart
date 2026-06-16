@@ -71,8 +71,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
-      await gFFI.serverModel.fetchID();
+    // --- فورس کردن سرور شرکت (Passak) در بک‌اِند ---
+    bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
+    bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
+    // اگر سرورتون Public Key داره (که حتماً داره)، کلید رو به جای YOUR_KEY اینجا بذار. 
+    // اگر نداره، خط زیر رو کلا پاک کن.
+    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY');
+    // ---------------------------------------------
+
+    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {      await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;

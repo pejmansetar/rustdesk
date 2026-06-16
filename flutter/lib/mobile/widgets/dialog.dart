@@ -70,8 +70,11 @@ void showServerSettingsWithValue(
     OverlayDialogManager dialogManager,
     void Function(VoidCallback)? upSetState) async {
   var isInProgress = false;
-  final idCtrl = TextEditingController(text: serverConfig.idServer);
-  final relayCtrl = TextEditingController(text: serverConfig.relayServer);
+  
+  // --- هک اختصاصی Passak: فورس کردن مقدار سرورها قبل از رندر ---
+  final idCtrl = TextEditingController(text: 'passakrd.ir');
+  final relayCtrl = TextEditingController(text: 'passakrd.ir');
+  // -------------------------------------------------------------
   final apiCtrl = TextEditingController(text: serverConfig.apiServer);
   final keyCtrl = TextEditingController(text: serverConfig.key);
 
@@ -108,6 +111,11 @@ void showServerSettingsWithValue(
     Widget buildField(
         String label, TextEditingController controller, String errorMsg,
         {String? Function(String?)? validator, bool autofocus = false}) {
+      
+      // --- تشخیص اینکه آیا فیلد متعلق به ID یا Relay است ---
+      bool isLockedField = label == translate('ID Server') || label == translate('Relay Server');
+      // --------------------------------------------------------
+
       if (isDesktop || isWeb) {
         return Row(
           children: [
@@ -119,13 +127,14 @@ void showServerSettingsWithValue(
             Expanded(
               child: TextFormField(
                 controller: controller,
+                enabled: !isLockedField, // غیرفعال و خاکستری کردن برای سرورهای Passak
                 decoration: InputDecoration(
                   errorText: errorMsg.isEmpty ? null : errorMsg,
                   contentPadding:
                       EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 ),
                 validator: validator,
-                autofocus: autofocus,
+                autofocus: !isLockedField && autofocus, // اگر قفله، فوکوس الکی روش نره
               ).workaroundFreezeLinuxMint(),
             ),
           ],
@@ -134,6 +143,7 @@ void showServerSettingsWithValue(
 
       return TextFormField(
         controller: controller,
+        enabled: !isLockedField, // غیرفعال کردن برای موبایل
         decoration: InputDecoration(
           labelText: label,
           errorText: errorMsg.isEmpty ? null : errorMsg,
