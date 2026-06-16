@@ -60,10 +60,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          // دکمه چرخ‌دنده با هدایت مستقیم به تب General
+          // دکمه چرخ‌دنده
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey, size: 24),
-            splashRadius: 20,
+            icon: const Icon(Icons.settings, color: Colors.grey, size: 26), // آیکون کمی بزرگتر شد
+            splashRadius: 22,
             tooltip: translate('Settings'),
             onPressed: () => DesktopSettingPage.switch2page(SettingsTabKey.general),
           ),
@@ -71,11 +71,13 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Expanded(
             child: TextField(
               controller: _idEditingController,
+              style: const TextStyle(fontSize: 16), // فونت تایپ آیدی کمی بزرگتر شد
               decoration: InputDecoration(
                 hintText: translate('Enter remote ID'),
                 fillColor: Colors.grey.withOpacity(0.1),
                 filled: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 15),
+                // تغییر دوم: اضافه شدن vertical padding برای افزایش ارتفاع باکس
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
               ),
               onChanged: (v) => _idController.id = v,
@@ -83,9 +85,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 15),
           
-          // دکمه Connect و منوی کشویی
+          // دکمه Connect و منوی کشویی بهینه‌شده
           Container(
-            height: 36,
+            height: 44, // تغییر دوم: ارتفاع دکمه از 36 به 44 افزایش یافت تا هم‌قد باکس متنی شود
             decoration: BoxDecoration(
               color: const Color(0xFF0078D7), 
               borderRadius: BorderRadius.circular(4),
@@ -93,7 +95,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // دکمه اصلی Connect
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -104,33 +105,45 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       }
                     }, 
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
                       child: Center(
-                        child: Text(translate("Connect"), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                        child: Text(translate("Connect"), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
                       ),
                     ),
                   ),
                 ),
-                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 24), 
+                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 28), // خط جداکننده هم بلندتر شد
                 
-                // فلش منوی کشویی
                 Material(
                   color: Colors.transparent,
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      splashColor: Colors.transparent, highlightColor: Colors.transparent,
-                    ),
-                    child: PopupMenuButton<String>(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 20),
-                      tooltip: translate('More Options'),
-                      offset: const Offset(0, 40),
-                      // این بار منو همیشه باز میشه، اما اکشن فقط در صورت داشتن آیدی اجرا میشه
-                      onSelected: (String result) {
-                        if (_cleanId.isEmpty) return; // اگر آیدی خالی بود کاری نکن
+                  child: Builder(
+                    builder: (buttonContext) => InkWell(
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                      onTap: () async {
+                        if (_cleanId.isEmpty) return; 
                         
-                        // تاخیر ۲۰۰ میلی‌ثانیه‌ای برای بسته شدن منو و جلوگیری از تداخل فلاتر
-                        Future.delayed(const Duration(milliseconds: 200), () {
+                        final RenderBox button = buttonContext.findRenderObject() as RenderBox;
+                        final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+                        final RelativeRect position = RelativeRect.fromRect(
+                          Rect.fromPoints(
+                            button.localToGlobal(Offset(0, button.size.height), ancestor: overlay),
+                            button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                          ),
+                          Offset.zero & overlay.size,
+                        );
+
+                        final result = await showMenu<String>(
+                          context: context,
+                          position: position,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          items: [
+                            PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),
+                            PopupMenuItem<String>(value: 'camera', child: Text(translate('View Camera'))),
+                            PopupMenuItem<String>(value: 'terminal', child: Text(translate('Terminal (Beta)'))),
+                          ],
+                        );
+
+                        if (result != null) {
                           if (result == 'file') {
                             connect(context, _cleanId, isFileTransfer: true);
                           } else if (result == 'camera') {
@@ -138,13 +151,12 @@ class _ConnectionPageState extends State<ConnectionPage> {
                           } else if (result == 'terminal') {
                             connect(context, _cleanId, isTerminal: true);
                           }
-                        });
+                        }
                       },
-                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                        PopupMenuItem<String>(value: 'file', child: Text(translate('File Transfer'))),
-                        PopupMenuItem<String>(value: 'camera', child: Text(translate('View Camera'))),
-                        PopupMenuItem<String>(value: 'terminal', child: Text(translate('Terminal (Beta)'))),
-                      ],
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 22),
+                      ),
                     ),
                   ),
                 ),
@@ -155,7 +167,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       ),
     );
   }
-    
+      
   Widget _buildStatusBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

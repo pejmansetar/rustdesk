@@ -156,7 +156,58 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isOutgoingOnly = bind.isOutgoingOnly();
+
+    Widget topUI = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!isOutgoingOnly)
+          Padding(
+            // تغییر سوم: فاصله از بالا (top) از 20 به 8 کم شد تا کارت بیاد بالاتر
+            padding: const EdgeInsets.only(top: 8, bottom: 5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: _buildSimpleBanner(bannerData['top_left'])),
+                buildCombinedIDPassCard(context),
+                Expanded(child: _buildSimpleBanner(bannerData['top_right'])),
+              ],
+            ),
+          ),
+        if (!isOutgoingOnly) buildBannersRow(),
+      ],
+    );
+
+    Widget bottomUI = Obx(() => buildHelpCards(stateGlobal.updateUrl.value));
+
+    return _buildBlock(
+      child: ChangeNotifierProvider.value(
+        value: gFFI.serverModel,
+        child: ConnectionPage(
+          topContent: topUI,
+          bottomContent: bottomUI,
+        ),
+      ),
+    );
+  }
+
+  // کارت یکپارچه ID و رمز (هوشمند برای Dark/Light Mode)
   Widget buildCombinedIDPassCard(BuildContext context) {
+    // تشخیص دارک مود یا لایت مود بودن سیستم
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // تعریف رنگ‌ها بر اساس تم
+    Color cardColor = isDark ? const Color(0xFF2B2D31) : Colors.white;
+    Color boxColor = isDark ? const Color(0xFF1E1F22) : Colors.grey.withOpacity(0.08);
+    Color labelColor = isDark ? const Color(0xFFB5BAC1) : Theme.of(context).textTheme.bodySmall!.color!.withOpacity(0.8);
+    Color idColor = isDark ? const Color(0xFFFF5252) : const Color(0xFFE53935);
+    Color passColor = isDark ? const Color(0xFFE0E0E0) : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
+    Color borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.3);
+    Color shadowColor = isDark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.08);
+
     return Consumer<ServerModel>(
       builder: (context, model, child) {
         final showOneTime = model.approveMode != 'click' && model.verificationMethod != kUsePermanentPassword;
@@ -164,37 +215,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           margin: const EdgeInsets.symmetric(horizontal: 10),
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 25),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(12),
+            border: isDark ? Border.all(color: borderColor) : null,
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 15, spreadRadius: 2, offset: const Offset(0, 5)),
+              BoxShadow(color: shadowColor, blurRadius: 15, spreadRadius: 2, offset: const Offset(0, 5)),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ردیف ID (کلمه Your حذف شد و دقیقاً شد ID)
+              // ردیف ID
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 70,
-                    child: Text(translate("ID"), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    width: 65, // عرض لیبل کم شد
+                    child: Text(
+                      translate("ID"), 
+                      textAlign: TextAlign.right, // متن به سمت باکس چسبید
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: labelColor)
+                    ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12), // فاصله دقیق و نزدیک
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white, borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.grey.withOpacity(0.4), width: 1),
+                      color: cardColor, borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: borderColor, width: 1),
                     ),
                     child: TextFormField(
                       controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFFE53935), letterSpacing: 2.0),
+                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: idColor, letterSpacing: 2.0),
                       decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
                     ),
                   ),
-                  const SizedBox(width: 70), 
+                  const SizedBox(width: 77), 
                 ],
               ),
               const SizedBox(height: 15),
@@ -203,37 +259,41 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 70,
-                    child: Text(translate("One-time"), style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7))),
+                    width: 65, // عرض لیبل کم شد
+                    child: Text(
+                      translate("One-time"), 
+                      textAlign: TextAlign.right, // متن به سمت باکس چسبید
+                      style: TextStyle(fontSize: 12, color: labelColor)
+                    ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12), // فاصله دقیق و نزدیک
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1), borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: Colors.grey.withOpacity(0.3), width: 1),
+                      color: boxColor, borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: borderColor, width: 1),
                     ),
                     child: TextFormField(
                       controller: model.serverPasswd, readOnly: true, textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 15, letterSpacing: 1.0),
+                      style: TextStyle(fontSize: 16, letterSpacing: 1.0, color: passColor),
                       decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
                     ),
                   ),
                   const SizedBox(width: 10),
                   SizedBox(
-                    width: 60,
+                    width: 67,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         if (showOneTime) 
                           InkWell(
                             onTap: () => bind.mainUpdateTemporaryPassword(),
-                            child: const Padding(padding: EdgeInsets.all(4.0), child: Icon(Icons.refresh, size: 18)),
+                            child: Padding(padding: const EdgeInsets.all(4.0), child: Icon(Icons.refresh, size: 18, color: labelColor)),
                           ),
                         const SizedBox(width: 5),
                         InkWell(
                           onTap: () => DesktopSettingPage.switch2page(SettingsTabKey.safety),
-                          child: const Padding(padding: EdgeInsets.all(4.0), child: Icon(Icons.edit, size: 18)),
+                          child: Padding(padding: const EdgeInsets.all(4.0), child: Icon(Icons.edit, size: 18, color: labelColor)),
                         ),
                       ],
                     ),
@@ -246,7 +306,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       },
     );
   }
-
+  
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
     
