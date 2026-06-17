@@ -75,6 +75,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (bind.mainGetUserDefaultOption(key: kOptionViewStyle) == '') {
       bind.mainSetUserDefaultOption(key: kOptionViewStyle, value: kRemoteViewStyleAdaptive);
     }
+    
+    // --- فورس کردن پسورد یکبار مصرف به حالت "فقط عددی" ---
+    bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
     // --------------------------------------------------------
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
@@ -86,6 +89,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       // ----------------------------------------------------------------
       
       await gFFI.serverModel.fetchID();
+      
+      // --- صدور آیدی برای نرم‌افزار حسابداری ---
+      // آیدی فعلی رو می‌گیره و توی یک فایل متنی تو سیستم ویندوز ذخیره می‌کنه
+      String currentId = gFFI.serverModel.serverId.text;
+      if (currentId.isNotEmpty) {
+        try {
+          // مسیر ذخیره فایل: C:\Users\Public\remotik_id.txt
+          // این مسیر سطح دسترسی ادمین نمیخواد و نرم افزار حسابداری راحت میتونه بخوندش
+          final file = File('C:\\Users\\Public\\remotik_id.txt');
+          await file.writeAsString(currentId);
+        } catch (e) {
+          // اگر ویندوز گیر داد، برنامه کرش نمیکنه و رد میشه
+        }
+      }
+      // ----------------------------------------
+
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;
@@ -95,7 +114,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
     rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
 
-    // بقیه کدهای initState همون قبلی‌هاست...
     rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
       if (call.method == kWindowMainWindowOnTop) {
         windowOnTop(null);
@@ -119,7 +137,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription = listenUniLinks();
     WidgetsBinding.instance.addObserver(this);
   }
-
   // --- ویجت کادر وسط همراه با قابلیت دابل‌کلیک برای کپی آیدی ---
   Widget buildCombinedIDPassCard(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -239,7 +256,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       },
     );
   }
-  
+
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
     
