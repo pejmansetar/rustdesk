@@ -831,20 +831,32 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       state: widget.state,
       setFullscreen: _setFullscreen,
     ));
-    // Do not show keyboard for camera connection type.
     if (widget.ffi.connType == ConnType.defaultConn) {
       toolbarItems.add(_KeyboardMenu(id: widget.id, ffi: widget.ffi));
     }
-    toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
+    
+    // --- دکمه مجزای Text Chat به تولبار اصلی اضافه شد ---
+    toolbarItems.add(_IconMenuButton(
+      assetName: 'assets/message_24dp_5F6368.svg',
+      tooltip: 'Text chat',
+      onPressed: () {
+        widget.ffi.chatModel.changeCurrentKey(MessageKey(widget.id, ChatModel.clientModeID));
+        widget.ffi.chatModel.toggleChatOverlay();
+      },
+      color: _ToolbarTheme.blueColor,
+      hoverColor: _ToolbarTheme.hoverBlueColor,
+    ));
+    // ---------------------------------------------------
+
+    toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi)); // منوی اصلی چت (شامل ویس کال)
     if (!isWeb) {
       toolbarItems.add(_VoiceCallMenu(id: widget.id, ffi: widget.ffi));
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
+    
+    // بقیه کدهای این تابع سر جاش بمونه ...
     final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
-    // innerAxis: how the toolbar icons themselves flow.
-    // outerAxis: how the toolbar block and the handle stack against each other
-    // (perpendicular to the dock edge, so the handle hangs off the interior face).
     final innerAxis = isHorizontal ? Axis.horizontal : Axis.vertical;
     final outerAxis = isHorizontal ? Axis.vertical : Axis.horizontal;
     final spacer = isHorizontal
@@ -879,9 +891,6 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       ),
     );
     final handle = _buildDraggableCollapse(context, edge, isHorizontal);
-    // The handle hangs off the interior face of the toolbar (away from the
-    // docked edge), centered along that face by the Flex's default cross-axis
-    // alignment, so the icons themselves sit flush against the docked edge.
     final children = (edge == _ToolbarEdge.top || edge == _ToolbarEdge.left)
         ? [toolbarMaterial, handle]
         : [handle, toolbarMaterial];
@@ -3249,6 +3258,24 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildDraggable(context),
+        
+        // --- دکمه Text Chat در کنار فلش و فول‌اسکرین ---
+        buttonWrapper(
+          () {
+            widget.ffi.chatModel.changeCurrentKey(
+                MessageKey(widget.id, ChatModel.clientModeID));
+            widget.ffi.chatModel.toggleChatOverlay();
+          },
+          Tooltip(
+            message: translate('Text chat'),
+            child: const Icon(
+              Icons.chat, // استفاده از آیکون استاندارد چت
+              size: iconSize - 2,
+            ),
+          ),
+        ),
+        // ----------------------------------------------
+
         Obx(() => buttonWrapper(
               () {
                 widget.setFullscreen(!isFullscreen.value);
@@ -3335,8 +3362,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       ),
     );
   }
-}
-
+  
 class InputModeMenu {
   final String key;
   final String menu;

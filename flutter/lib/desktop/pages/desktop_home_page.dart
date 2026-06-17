@@ -71,15 +71,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // --- فورس کردن سرور شرکت (Passak) در بک‌اِند ---
-    bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    // اگر سرورتون Public Key داره (که حتماً داره)، کلید رو به جای YOUR_KEY اینجا بذار. 
-    // اگر نداره، خط زیر رو کلا پاک کن.
-    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY');
-    // ---------------------------------------------
+    // --- اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض ---
+    if (bind.mainGetUserDefaultOption(key: kOptionViewStyle) == '') {
+      bind.mainSetUserDefaultOption(key: kOptionViewStyle, value: kRemoteViewStyleAdaptive);
+    }
+    // --------------------------------------------------------
 
-    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {      await gFFI.serverModel.fetchID();
+    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
+      
+      // --- قفل امنیتی ضد CLI (هر یک ثانیه سرور Passak فورس می‌شود) ---
+      bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
+      bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
+      // bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // در صورت داشتن کلید، این خط را از کامنت درآورید
+      // ----------------------------------------------------------------
+      
+      await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
       if (systemError != error) {
         systemError = error;
@@ -89,6 +95,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
     rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
 
+    // بقیه کدهای initState همون قبلی‌هاست...
     rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
       if (call.method == kWindowMainWindowOnTop) {
         windowOnTop(null);
@@ -113,58 +120,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     WidgetsBinding.instance.addObserver(this);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    final isOutgoingOnly = bind.isOutgoingOnly();
-
-    Widget topUI = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (!isOutgoingOnly)
-          Padding(
-            // فاصله از بالا کم شد تا کادر بیاد بالاتر
-            padding: const EdgeInsets.only(top: 8, bottom: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(child: _buildSimpleBanner(bannerData['top_left'])),
-                buildCombinedIDPassCard(context),
-                Expanded(child: _buildSimpleBanner(bannerData['top_right'])),
-              ],
-            ),
-          ),
-        if (!isOutgoingOnly) buildBannersRow(),
-      ],
-    );
-
-    Widget bottomUI = Obx(() => buildHelpCards(stateGlobal.updateUrl.value));
-
-    return _buildBlock(
-      child: ChangeNotifierProvider.value(
-        value: gFFI.serverModel,
-        child: ConnectionPage(
-          topContent: topUI,
-          bottomContent: bottomUI,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBlock({required Widget child}) {
-    return buildRemoteBlock(block: _block, mask: true, use: canBeBlocked, child: child);
-  }
-
-  Widget _buildSimpleBanner(Map<String, dynamic>? data) {
-    if (data == null || data['image'] == null || data['image'].toString().isEmpty) return const SizedBox.shrink();
-    return InkWell(
-      onTap: () => data['link'] != null ? launchUrlString(data['link']) : null,
-      hoverColor: Colors.transparent, splashColor: Colors.transparent, highlightColor: Colors.transparent,
-      child: Image.network(data['image'], height: 95, fit: BoxFit.contain, errorBuilder: (c, e, s) => const SizedBox.shrink()),
-    );
-  }
-
-  // کادر یکپارچه هوشمند (پشتیبانی از Dark/Light Mode و فواصل جدید)
+  // --- ویجت کادر وسط همراه با قابلیت دابل‌کلیک برای کپی آیدی ---
   Widget buildCombinedIDPassCard(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -193,7 +149,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ردیف ID
+              // ردیف ID با قابلیت کپی
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -206,16 +162,25 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Container(
-                    width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
-                    decoration: BoxDecoration(
-                      color: cardColor, borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: TextFormField(
-                      controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: idColor, letterSpacing: 2.0),
-                      decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                  // اضافه شدن GestureDetector برای دابل کلیک
+                  GestureDetector(
+                    onDoubleTap: () {
+                      if (model.serverId.text.isNotEmpty) {
+                        Clipboard.setData(ClipboardData(text: model.serverId.text));
+                        showToast(translate("Copied")); // نمایش پیام کپی شدن
+                      }
+                    },
+                    child: Container(
+                      width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cardColor, borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: borderColor, width: 1),
+                      ),
+                      child: TextFormField(
+                        controller: model.serverId, readOnly: true, textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: idColor, letterSpacing: 2.0),
+                        decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 77), 
@@ -274,7 +239,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       },
     );
   }
-
+  
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
     

@@ -112,9 +112,12 @@ void showServerSettingsWithValue(
         String label, TextEditingController controller, String errorMsg,
         {String? Function(String?)? validator, bool autofocus = false}) {
       
-      // --- تشخیص اینکه آیا فیلد متعلق به ID یا Relay است ---
-      bool isLockedField = label == translate('ID Server') || label == translate('Relay Server');
-      // --------------------------------------------------------
+      // --- هک اختصاصی Passak: قفل کردن هر ۴ فیلد سرور ---
+      bool isLockedField = label == translate('ID Server') || 
+                           label == translate('Relay Server') || 
+                           label == translate('API Server') || 
+                           label == 'Key';
+      // ----------------------------------------------------
 
       if (isDesktop || isWeb) {
         return Row(
@@ -127,14 +130,14 @@ void showServerSettingsWithValue(
             Expanded(
               child: TextFormField(
                 controller: controller,
-                enabled: !isLockedField, // غیرفعال و خاکستری کردن برای سرورهای Passak
+                enabled: !isLockedField, // <--- اگر یکی از اون 4 فیلد باشه، اینجا غیرفعال و خاکستری میشه
                 decoration: InputDecoration(
                   errorText: errorMsg.isEmpty ? null : errorMsg,
                   contentPadding:
                       EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 ),
                 validator: validator,
-                autofocus: !isLockedField && autofocus, // اگر قفله، فوکوس الکی روش نره
+                autofocus: !isLockedField && autofocus, 
               ).workaroundFreezeLinuxMint(),
             ),
           ],
@@ -143,7 +146,7 @@ void showServerSettingsWithValue(
 
       return TextFormField(
         controller: controller,
-        enabled: !isLockedField, // غیرفعال کردن برای موبایل
+        enabled: !isLockedField, // <--- برای نسخه موبایل هم غیرفعال میشه
         decoration: InputDecoration(
           labelText: label,
           errorText: errorMsg.isEmpty ? null : errorMsg,
@@ -151,7 +154,7 @@ void showServerSettingsWithValue(
         validator: validator,
       ).workaroundFreezeLinuxMint();
     }
-
+    
     return CustomAlertDialog(
       title: Row(
         children: [
