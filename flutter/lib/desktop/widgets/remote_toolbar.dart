@@ -3362,7 +3362,8 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       ),
     );
   }
-  
+}
+
 class InputModeMenu {
   final String key;
   final String menu;
