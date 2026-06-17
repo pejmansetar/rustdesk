@@ -78,6 +78,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     
     // --- فورس کردن پسورد یکبار مصرف به حالت "فقط عددی" ---
     bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
+    bind.mainUpdateTemporaryPassword(); // رفرش درجا برای اطمینان از عددی شدن
     // --------------------------------------------------------
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
@@ -85,25 +86,30 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       // --- قفل امنیتی ضد CLI (هر یک ثانیه سرور Passak فورس می‌شود) ---
       bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
       bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-      // bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // در صورت داشتن کلید، این خط را از کامنت درآورید
+      // bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); 
       // ----------------------------------------------------------------
       
       await gFFI.serverModel.fetchID();
       
-      // --- صدور آیدی برای نرم‌افزار حسابداری ---
-      // آیدی فعلی رو می‌گیره و توی یک فایل متنی تو سیستم ویندوز ذخیره می‌کنه
+      // --- ارسال تمیز و بدون فایلِ آیدی به رجیستری ویندوز (برای حسابداری) ---
       String currentId = gFFI.serverModel.serverId.text;
-      if (currentId.isNotEmpty) {
+      // استفاده از isWindows اختصاصی راست‌دسک
+      if (currentId.isNotEmpty && isWindows) {
         try {
-          // مسیر ذخیره فایل: C:\Users\Public\remotik_id.txt
-          // این مسیر سطح دسترسی ادمین نمیخواد و نرم افزار حسابداری راحت میتونه بخوندش
-          final file = File('C:\\Users\\Public\\remotik_id.txt');
-          await file.writeAsString(currentId);
+          // ذخیره بی‌صدا در رجیستری: HKEY_CURRENT_USER\Software\Passak
+          Process.run('reg', [
+            'add',
+            'HKCU\\Software\\Passak',
+            '/v', 'RemotikID',
+            '/t', 'REG_SZ',
+            '/d', currentId,
+            '/f' // Force overwrite
+          ]);
         } catch (e) {
-          // اگر ویندوز گیر داد، برنامه کرش نمیکنه و رد میشه
+          // خطا نادیده گرفته می‌شود
         }
       }
-      // ----------------------------------------
+      // ----------------------------------------------------------------------
 
       final error = await bind.mainGetError();
       if (systemError != error) {
@@ -137,7 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription = listenUniLinks();
     WidgetsBinding.instance.addObserver(this);
   }
-  // --- ویجت کادر وسط همراه با قابلیت دابل‌کلیک برای کپی آیدی ---
+      // --- ویجت کادر وسط همراه با قابلیت دابل‌کلیک برای کپی آیدی ---
   Widget buildCombinedIDPassCard(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
