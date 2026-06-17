@@ -779,6 +779,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
           borderRadius: borderRadius,
           child: _DraggableShowHide(
             id: widget.id,
+            ffi: widget.ffi, // <---- این خط رو الان اضافه کردیم
             sessionId: widget.ffi.sessionId,
             dragging: _dragging,
             fraction: _fraction,
@@ -800,7 +801,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       );
     });
   }
-
+  
   Widget _buildToolbar(
       BuildContext context, _ToolbarEdge edge, bool isHorizontal) {
     final List<Widget> toolbarItems = [];
@@ -2979,6 +2980,7 @@ class RdoMenuButton<T> extends StatelessWidget {
 
 class _DraggableShowHide extends StatefulWidget {
   final String id;
+  final FFI ffi; // <---- این خط رو اضافه کردیم
   final SessionID sessionId;
   final RxDouble fraction;
   final Rx<_ToolbarEdge> edge;
@@ -3002,6 +3004,7 @@ class _DraggableShowHide extends StatefulWidget {
   const _DraggableShowHide({
     Key? key,
     required this.id,
+    required this.ffi, // <---- این خط رو اضافه کردیم
     required this.sessionId,
     required this.fraction,
     required this.edge,
