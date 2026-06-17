@@ -1,12 +1,3 @@
-بسیار عالی. من دقیقاً کدی که فرستادی رو مبنا قرار دادم. هیچ‌کدوم از توابع یا ویجت‌هایی که تو این فایل داشتی (مثل دابل‌کلیک، کادر گرادیانت، انیمیشن‌ها و...) رو دست نزدم.
-
-فقط دو کار روی کدت انجام دادم:
-۱. متغیر `String _lastSavedId = '';` رو اون بالا تعریف کردم تا رجیستری ویندوز رو خسته نکنیم.
-۲. کدهای داخل `initState` رو دقیقاً با همون منطق **رجیستری ویندوز**، **آپدیت درجا پسورد عددی** و **قفل ضد CLI** آپدیت کردم.
-
-این کل محتوای فایل **`desktop_home_page.dart`** است، با خیال راحت با `Ctrl+A` کل فایلت رو پاک کن و این کد رو پیست کن تا بفرستیم برای بیلد نهایی:
-
-```dart
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
@@ -31,7 +22,10 @@ import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:url_launcher/url_launcher.dart'; // <--- این خط جا افتاده بود
 import 'package:window_manager/window_manager.dart';
+import 'package:window_size/window_size.dart' as window_size; // <--- این خط جا افتاده بود
+import '../widgets/button.dart'; // <--- مقصر اصلی کرش بیلد!
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -105,7 +99,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       
       // --- ارسال تمیز و بهینه آیدی به رجیستری ویندوز (برای حسابداری) ---
       String currentId = gFFI.serverModel.serverId.text;
-      // استفاده از متغیر isWindows که خود فلاتر راست‌دسک داره (امن‌تره)
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
         _lastSavedId = currentId; // آپدیت متغیر برای جلوگیری از تکرار
         try {
@@ -249,12 +242,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // اضافه شدن GestureDetector برای دابل کلیک
                   GestureDetector(
                     onDoubleTap: () {
                       if (model.serverId.text.isNotEmpty) {
                         Clipboard.setData(ClipboardData(text: model.serverId.text));
-                        showToast(translate("Copied")); // نمایش پیام کپی شدن
+                        showToast(translate("Copied"));
                       }
                     },
                     child: Container(
@@ -384,9 +376,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 }
 
-// ==========================================
-// ویجت هوشمند بنرهای ۴ حالته با انیمیشن (نسخه ایمن)
-// ==========================================
 class DynamicBannerWidget extends StatefulWidget {
   final Map<String, dynamic> data;
   const DynamicBannerWidget({Key? key, required this.data}) : super(key: key);
@@ -476,4 +465,3 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
     );
   });
 }
-```
