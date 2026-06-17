@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
+import 'package:flutter_hbb/common/widgets/dialog.dart'; // جایگزین ایمپورت مشکل‌ساز شد
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
@@ -22,10 +23,9 @@ import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:url_launcher/url_launcher.dart'; // <--- این خط جا افتاده بود
+import 'package:url_launcher/url_launcher.dart'; 
 import 'package:window_manager/window_manager.dart';
-import 'package:window_size/window_size.dart' as window_size; // <--- این خط جا افتاده بود
-import '../widgets/button.dart'; // <--- مقصر اصلی کرش بیلد!
+import 'package:window_size/window_size.dart' as window_size;
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
