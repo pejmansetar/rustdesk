@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // اضافه شد برای پشتیبانی از فرمت‌کننده تکست
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
-import '../../common/formatter/id_formatter.dart'; 
 import '../../common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 
@@ -198,6 +198,31 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+// --- کلاس سفارشی برای جدا کردن آیدی‌ها (۳ رقم ۳ رقم) ---
+class IdFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    // گرفتن متن بدون فاصله‌ها
+    String newText = newValue.text.replaceAll(RegExp(r'\s+'), '');
+    String formatted = '';
+    
+    // اضافه کردن فاصله بعد از هر 3 کاراکتر
+    for (int i = 0; i < newText.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        formatted += ' ';
+      }
+      formatted += newText[i];
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      // قرار دادن نشانگر در انتهای متن
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }
