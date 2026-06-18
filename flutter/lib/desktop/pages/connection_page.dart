@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // اضافه شد برای پشتیبانی از فرمت‌کننده تکست
+import 'package:flutter/services.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
+import '../../common/formatter/id_formatter.dart'; // <--- این خط حیاتی برگشت!
 import '../../common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 
@@ -71,9 +72,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Expanded(
             child: TextField(
               controller: _idEditingController,
-              // --- اضافه شدن جداکننده ۳ رقمی ---
-              inputFormatters: [IdFormatter()], 
-              // --- اضافه شدن عملکرد اینتر ---
+              // --- استفاده از کلاس سفارشی با نام جدید ---
+              inputFormatters: [CustomIdFormatter()], 
               onSubmitted: (v) {
                 if (_cleanId.isNotEmpty) {
                   connect(context, _cleanId);
@@ -106,7 +106,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
-                    // یکپارچه‌سازی رنگ هاور و کلیک برای زیبایی
                     hoverColor: Colors.white.withOpacity(0.15),
                     splashColor: Colors.white.withOpacity(0.2),
                     highlightColor: Colors.white.withOpacity(0.1),
@@ -130,12 +129,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   child: Builder(
                     builder: (buttonContext) => InkWell(
                       borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
-                      // همگام‌سازی استایل هاورِ فلش با دکمه کانکت
                       hoverColor: Colors.white.withOpacity(0.15),
                       splashColor: Colors.white.withOpacity(0.2),
                       highlightColor: Colors.white.withOpacity(0.1),
                       onTap: () async {
-                        // شرط خالی بودن آیدی حذف شد تا منو همیشه باز شود
                         final RenderBox button = buttonContext.findRenderObject() as RenderBox;
                         final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
                         final RelativeRect position = RelativeRect.fromRect(
@@ -158,7 +155,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                         );
 
                         if (result != null) {
-                          // جلوگیری از ارور اگر کاربر بدون وارد کردن آیدی گزینه‌ای رو انتخاب کرد
                           if (_cleanId.isNotEmpty) {
                             if (result == 'file') {
                               connect(context, _cleanId, isFileTransfer: true);
@@ -202,8 +198,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
 }
 
-// --- کلاس سفارشی برای جدا کردن آیدی‌ها (۳ رقم ۳ رقم) ---
-class IdFormatter extends TextInputFormatter {
+// --- تغییر نام به CustomIdFormatter تا با فایل‌های راست‌دسک تداخل نکنه ---
+class CustomIdFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
@@ -221,7 +217,6 @@ class IdFormatter extends TextInputFormatter {
 
     return TextEditingValue(
       text: formatted,
-      // قرار دادن نشانگر در انتهای متن
       selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
