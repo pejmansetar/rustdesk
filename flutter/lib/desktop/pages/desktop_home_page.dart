@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
-import 'package:flutter_hbb/common/widgets/dialog.dart'; // جایگزین ایمپورت مشکل‌ساز شد
+import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
@@ -38,15 +38,23 @@ const borderColor = Color(0xFF2F65BA);
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  
   @override
-  bool watchIsCanRecordAudio = false;
   bool get wantKeepAlive => true;
+
   var systemError = '';
   StreamSubscription? _uniLinksSubscription;
   var svcStopped = false.obs;
   Timer? _updateTimer;
   bool isCardClosed = false;
   
+  // --- متغیرهای پرمیشن (فیکس شده) ---
+  bool watchIsCanRecordAudio = false;
+  bool watchIsInputMonitoring = false;
+  bool watchIsCanScreenRecording = false;
+  bool watchIsProcessTrust = false;
+  Size imcomingOnlyHomeSize = Size.zero;
+
   // اضافه شدن متغیر برای جلوگیری از نوشتن تکراری در رجیستری
   String _lastSavedId = '';
 
@@ -85,36 +93,43 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     
     // --- فورس کردن پسورد یکبار مصرف به حالت "فقط عددی" ---
     bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
-    bind.mainUpdateTemporaryPassword(); // اضافه شد: رفرش درجا برای اطمینان از عددی شدن
-    // --------------------------------------------------------
+    bind.mainUpdateTemporaryPassword(); 
+
+    // --- فورس کردن سرور شرکت (Passak) در بک‌اِند ---
+    bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
+    bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
+    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // اگر کلید ندارید، این خط را پاک کنید
+    // ---------------------------------------------
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
       // --- قفل امنیتی ضد CLI (هر یک ثانیه سرور Passak فورس می‌شود) ---
       bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
       bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-      // bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // در صورت داشتن کلید، این خط را از کامنت درآورید
+      bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
       // ----------------------------------------------------------------
       
       await gFFI.serverModel.fetchID();
+
+      // --- چک کردن هوشمند پسورد (ضد حروف انگلیسی) ---
+      String currentPass = gFFI.serverModel.serverPasswd.text;
+      if (currentPass.isNotEmpty && currentPass != '-') {
+        if (RegExp(r'[^0-9]').hasMatch(currentPass)) {
+          bind.mainUpdateTemporaryPassword(); 
+        }
+      }
+      // ----------------------------------------------
       
       // --- ارسال تمیز و بهینه آیدی به رجیستری ویندوز (برای حسابداری) ---
       String currentId = gFFI.serverModel.serverId.text;
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
-        _lastSavedId = currentId; // آپدیت متغیر برای جلوگیری از تکرار
+        _lastSavedId = currentId; 
         try {
-          // مسیر ذخیره: HKEY_CURRENT_USER\Software\Passak
           Process.run('reg', [
-            'add',
-            'HKCU\\Software\\Passak',
-            '/v', 'RemotikID',
-            '/t', 'REG_SZ',
-            '/d', currentId,
-            '/f' // Force overwrite
+            'add', 'HKCU\\Software\\Passak', '/v', 'RemotikID',
+            '/t', 'REG_SZ', '/d', currentId, '/f' 
           ]);
-        } catch (e) {
-          // اگر ویندوز گیر داد، برنامه کرش نمیکنه و رد میشه
-        }
+        } catch (e) { }
       }
       // ----------------------------------------------------------------
 
@@ -123,15 +138,87 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         systemError = error;
         setState(() {});
       }
+
+      // --- چک کردن سرویس و دسترسی‌ها ---
+      final v = await mainGetBoolOption(kOptionStopService);
+      if (v != svcStopped.value) {
+        svcStopped.value = v;
+        setState(() {});
+      }
+
+      if (watchIsCanScreenRecording) {
+        if (bind.mainIsCanScreenRecording(prompt: false)) {
+          watchIsCanScreenRecording = false;
+          setState(() {});
+        }
+      }
+      if (watchIsProcessTrust) {
+        if (bind.mainIsProcessTrusted(prompt: false)) {
+          watchIsProcessTrust = false;
+          setState(() {});
+        }
+      }
+      if (watchIsInputMonitoring) {
+        if (bind.mainIsCanInputMonitoring(prompt: false)) {
+          watchIsInputMonitoring = false;
+          setState(() {});
+        }
+      }
+      if (watchIsCanRecordAudio) {
+        if (isMacOS) {
+          Future.microtask(() async {
+            if ((await osxCanRecordAudio() == PermissionAuthorizeType.authorized)) {
+              watchIsCanRecordAudio = false;
+              setState(() {});
+            }
+          });
+        } else {
+          watchIsCanRecordAudio = false;
+          setState(() {});
+        }
+      }
     });
 
+    Get.put<RxBool>(svcStopped, tag: 'stop-service');
     rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
 
+    Map<String, dynamic> screenToMap(window_size.Screen screen) => {
+          'frame': {
+            'l': screen.frame.left, 't': screen.frame.top,
+            'r': screen.frame.right, 'b': screen.frame.bottom,
+          },
+          'visibleFrame': {
+            'l': screen.visibleFrame.left, 't': screen.visibleFrame.top,
+            'r': screen.visibleFrame.right, 'b': screen.visibleFrame.bottom,
+          },
+          'scaleFactor': screen.scaleFactor,
+        };
+
+    bool isChattyMethod(String methodName) {
+      if (methodName == kWindowBumpMouse) return true;
+      return false;
+    }
+
     rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
+      if (!isChattyMethod(call.method)) {
+        debugPrint("[Main] call ${call.method} with args ${call.arguments} from window $fromWindowId");
+      }
       if (call.method == kWindowMainWindowOnTop) {
         windowOnTop(null);
+      } else if (call.method == kWindowRefreshCurrentUser) {
+        gFFI.userModel.refreshCurrentUser();
+      } else if (call.method == kWindowGetWindowInfo) {
+        final screen = (await window_size.getWindowInfo()).screen;
+        if (screen == null) return '';
+        return jsonEncode(screenToMap(screen));
+      } else if (call.method == kWindowGetScreenList) {
+        return jsonEncode((await window_size.getScreenList()).map(screenToMap).toList());
       } else if (call.method == kWindowActionRebuild) {
         reloadCurrentWindow();
+      } else if (call.method == kWindowEventShow) {
+        await rustDeskWinManager.registerActiveWindow(call.arguments["id"]);
+      } else if (call.method == kWindowEventHide) {
+        await rustDeskWinManager.unregisterActiveWindow(call.arguments['id']);
       } else if (call.method == kWindowConnect) {
         await connectMainDesktop(
           call.arguments['id'],
@@ -144,11 +231,57 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           forceRelay: call.arguments['forceRelay'] ?? false,
           connToken: call.arguments['connToken'],
         );
+      } else if (call.method == kWindowBumpMouse) {
+        return RdPlatformChannel.instance.bumpMouse(
+          dx: call.arguments['dx'], dy: call.arguments['dy']);
+      } else if (call.method == kWindowEventMoveTabToNewWindow) {
+        final args = call.arguments.split(',');
+        int? windowId;
+        try { windowId = int.parse(args[0]); } catch (e) {}
+        WindowType? windowType;
+        try { windowType = WindowType.values.byName(args[3]); } catch (e) {}
+        if (windowId != null && windowType != null) {
+          await rustDeskWinManager.moveTabToNewWindow(windowId, args[1], args[2], windowType);
+        }
+      } else if (call.method == kWindowEventOpenMonitorSession) {
+        final args = jsonDecode(call.arguments);
+        final windowId = args['window_id'] as int;
+        final peerId = args['peer_id'] as String;
+        final display = args['display'] as int;
+        final displayCount = args['display_count'] as int;
+        final windowType = args['window_type'] as int;
+        final screenRect = parseParamScreenRect(args);
+        await rustDeskWinManager.openMonitorSession(
+            windowId, peerId, display, displayCount, screenRect, windowType);
+      } else if (call.method == kWindowEventRemoteWindowCoords) {
+        final windowId = int.tryParse(call.arguments);
+        if (windowId != null) {
+          return jsonEncode(await rustDeskWinManager.getOtherRemoteWindowCoords(windowId));
+        }
       }
       return '';
     });
+    
     _uniLinksSubscription = listenUniLinks();
+
+    if (bind.isIncomingOnly()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateWindowSize();
+      });
+    }
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  _updateWindowSize() {
+    RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
+    if (renderObject == null) return;
+    if (renderObject is RenderBox) {
+      final size = renderObject.size;
+      if (size != imcomingOnlyHomeSize) {
+        imcomingOnlyHomeSize = size;
+        windowManager.setSize(getIncomingOnlyHomeSize());
+      }
+    }
   }
 
   @override
@@ -201,7 +334,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  // --- ویجت کادر وسط همراه با قابلیت دابل‌کلیک برای کپی آیدی ---
   Widget buildCombinedIDPassCard(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -230,18 +362,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ردیف ID با قابلیت کپی
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: 65, 
-                    child: Text(
-                      translate("ID"), 
-                      textAlign: TextAlign.right, 
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: labelColor)
-                    ),
-                  ),
+                  SizedBox(width: 65, child: Text(translate("ID"), textAlign: TextAlign.right, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: labelColor))),
                   const SizedBox(width: 12),
                   GestureDetector(
                     onDoubleTap: () {
@@ -267,18 +391,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 ],
               ),
               const SizedBox(height: 15),
-              // ردیف One-time
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: 65,
-                    child: Text(
-                      translate("One-time"), 
-                      textAlign: TextAlign.right, 
-                      style: TextStyle(fontSize: 12, color: labelColor)
-                    ),
-                  ),
+                  SizedBox(width: 65, child: Text(translate("One-time"), textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: labelColor))),
                   const SizedBox(width: 12),
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
@@ -322,18 +438,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Widget buildBannersRow() {
     List<Widget> bannerWidgets = [];
-    
     for (int i = 1; i <= 10; i++) {
       String key = 'bottom_$i';
       if (bannerData.containsKey(key) && bannerData[key]?['image'] != null && bannerData[key]['image'].toString().isNotEmpty) {
-        bannerWidgets.add(
-          DynamicBannerWidget(data: bannerData[key])
-        );
+        bannerWidgets.add(DynamicBannerWidget(data: bannerData[key]));
       }
     }
-
     if (bannerWidgets.isEmpty) return const SizedBox.shrink();
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
       child: Wrap(
@@ -372,193 +483,20 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   @override
-  void initState() {
-    super.initState();
-    _fetchBannerData();
-    
-    // --- فورس کردن سرور شرکت (Passak) در بک‌اِند ---
-    bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    // اگر سرورتون Public Key داره (که حتماً داره)، کلید رو به جای YOUR_KEY اینجا بذار. 
-    // اگر نداره، خط زیر رو کلا پاک کن.
-    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY');
-    // ---------------------------------------------
-
-    _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {      await gFFI.serverModel.fetchID();
-      final error = await bind.mainGetError();
-      if (systemError != error) {
-        systemError = error;
-        setState(() {});
-      }
-      final v = await mainGetBoolOption(kOptionStopService);
-      if (v != svcStopped.value) {
-        svcStopped.value = v;
-        setState(() {});
-      }
-      if (watchIsCanScreenRecording) {
-        if (bind.mainIsCanScreenRecording(prompt: false)) {
-          watchIsCanScreenRecording = false;
-          setState(() {});
-        }
-      }
-      if (watchIsProcessTrust) {
-        if (bind.mainIsProcessTrusted(prompt: false)) {
-          watchIsProcessTrust = false;
-          setState(() {});
-        }
-      }
-      if (watchIsInputMonitoring) {
-        if (bind.mainIsCanInputMonitoring(prompt: false)) {
-          watchIsInputMonitoring = false;
-          // Do not notify for now.
-          // Monitoring may not take effect until the process is restarted.
-          // rustDeskWinManager.call(
-          //     WindowType.RemoteDesktop, kWindowDisableGrabKeyboard, '');
-          setState(() {});
-        }
-      }
-      if (watchIsCanRecordAudio) {
-        if (isMacOS) {
-          Future.microtask(() async {
-            if ((await osxCanRecordAudio() ==
-                PermissionAuthorizeType.authorized)) {
-              watchIsCanRecordAudio = false;
-              setState(() {});
-            }
-          });
-        } else {
-          watchIsCanRecordAudio = false;
-          setState(() {});
-        }
-      }
-    });
-    Get.put<RxBool>(svcStopped, tag: 'stop-service');
-    rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
-
-    screenToMap(window_size.Screen screen) => {
-          'frame': {
-            'l': screen.frame.left,
-            't': screen.frame.top,
-            'r': screen.frame.right,
-            'b': screen.frame.bottom,
-          },
-          'visibleFrame': {
-            'l': screen.visibleFrame.left,
-            't': screen.visibleFrame.top,
-            'r': screen.visibleFrame.right,
-            'b': screen.visibleFrame.bottom,
-          },
-          'scaleFactor': screen.scaleFactor,
-        };
-
-    bool isChattyMethod(String methodName) {
-      switch (methodName) {
-        case kWindowBumpMouse: return true;
-      }
-
-      return false;
-    }
-
-    rustDeskWinManager.setMethodHandler((call, fromWindowId) async {
-      if (!isChattyMethod(call.method)) {
-        debugPrint(
-          "[Main] call ${call.method} with args ${call.arguments} from window $fromWindowId");
-      }
-      if (call.method == kWindowMainWindowOnTop) {
-        windowOnTop(null);
-      } else if (call.method == kWindowRefreshCurrentUser) {
-        gFFI.userModel.refreshCurrentUser();
-      } else if (call.method == kWindowGetWindowInfo) {
-        final screen = (await window_size.getWindowInfo()).screen;
-        if (screen == null) {
-          return '';
-        } else {
-          return jsonEncode(screenToMap(screen));
-        }
-      } else if (call.method == kWindowGetScreenList) {
-        return jsonEncode(
-            (await window_size.getScreenList()).map(screenToMap).toList());
-      } else if (call.method == kWindowActionRebuild) {
-        reloadCurrentWindow();
-      } else if (call.method == kWindowEventShow) {
-        await rustDeskWinManager.registerActiveWindow(call.arguments["id"]);
-      } else if (call.method == kWindowEventHide) {
-        await rustDeskWinManager.unregisterActiveWindow(call.arguments['id']);
-      } else if (call.method == kWindowConnect) {
-        await connectMainDesktop(
-          call.arguments['id'],
-          isFileTransfer: call.arguments['isFileTransfer'],
-          isViewCamera: call.arguments['isViewCamera'],
-          isTerminal: call.arguments['isTerminal'],
-          isTcpTunneling: call.arguments['isTcpTunneling'],
-          isRDP: call.arguments['isRDP'],
-          password: call.arguments['password'],
-          forceRelay: call.arguments['forceRelay'],
-          connToken: call.arguments['connToken'],
-        );
-      } else if (call.method == kWindowBumpMouse) {
-        return RdPlatformChannel.instance.bumpMouse(
-          dx: call.arguments['dx'],
-          dy: call.arguments['dy']);
-      } else if (call.method == kWindowEventMoveTabToNewWindow) {
-        final args = call.arguments.split(',');
-        int? windowId;
-        try {
-          windowId = int.parse(args[0]);
-        } catch (e) {
-          debugPrint("Failed to parse window id '${call.arguments}': $e");
-        }
-        WindowType? windowType;
-        try {
-          windowType = WindowType.values.byName(args[3]);
-        } catch (e) {
-          debugPrint("Failed to parse window type '${call.arguments}': $e");
-        }
-        if (windowId != null && windowType != null) {
-          await rustDeskWinManager.moveTabToNewWindow(
-              windowId, args[1], args[2], windowType);
-        }
-      } else if (call.method == kWindowEventOpenMonitorSession) {
-        final args = jsonDecode(call.arguments);
-        final windowId = args['window_id'] as int;
-        final peerId = args['peer_id'] as String;
-        final display = args['display'] as int;
-        final displayCount = args['display_count'] as int;
-        final windowType = args['window_type'] as int;
-        final screenRect = parseParamScreenRect(args);
-        await rustDeskWinManager.openMonitorSession(
-            windowId, peerId, display, displayCount, screenRect, windowType);
-      } else if (call.method == kWindowEventRemoteWindowCoords) {
-        final windowId = int.tryParse(call.arguments);
-        if (windowId != null) {
-          return jsonEncode(
-              await rustDeskWinManager.getOtherRemoteWindowCoords(windowId));
-        }
-      }
-    });
-    _uniLinksSubscription = listenUniLinks();
-
-    if (bind.isIncomingOnly()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _updateWindowSize();
-      });
-    }
-    WidgetsBinding.instance.addObserver(this);
+  void dispose() { 
+    _uniLinksSubscription?.cancel(); 
+    _updateTimer?.cancel(); 
+    WidgetsBinding.instance.removeObserver(this); 
+    super.dispose(); 
   }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {}
+}
 
-  _updateWindowSize() {
-    RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
-    if (renderObject == null) {
-      return;
-    }
-    if (renderObject is RenderBox) {
-      final size = renderObject.size;
-      if (size != imcomingOnlyHomeSize) {
-        imcomingOnlyHomeSize = size;
-        windowManager.setSize(getIncomingOnlyHomeSize());
-      }
-    }
-  }
+class DynamicBannerWidget extends StatefulWidget {
+  final Map<String, dynamic> data;
+  const DynamicBannerWidget({Key? key, required this.data}) : super(key: key);
 
   @override
   State<DynamicBannerWidget> createState() => _DynamicBannerWidgetState();
@@ -599,7 +537,6 @@ class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
               fit: StackFit.expand,
               children: [
                 Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const SizedBox.shrink()),
-                
                 if (text.isNotEmpty && mode != 0)
                   AnimatedPositioned(
                     duration: const Duration(milliseconds: 250),
