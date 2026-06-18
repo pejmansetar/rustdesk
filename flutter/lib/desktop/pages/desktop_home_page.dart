@@ -123,8 +123,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     // فورس کردن سرور شرکت (Passak)
     bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // اگر کلید ندارید پاک کنید
-
+    bind.mainSetOption(key: 'custom-key', value: ''); 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
       // قفل امنیتی سرور
