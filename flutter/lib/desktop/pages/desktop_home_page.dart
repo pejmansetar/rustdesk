@@ -39,6 +39,7 @@ const borderColor = Color(0xFF2F65BA);
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   @override
+  bool watchIsCanRecordAudio = false;
   bool get wantKeepAlive => true;
   var systemError = '';
   StreamSubscription? _uniLinksSubscription;
