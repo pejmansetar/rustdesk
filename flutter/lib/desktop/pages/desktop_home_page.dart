@@ -126,13 +126,34 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     bind.mainSetOption(key: 'custom-key', value: ''); 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
-      // قفل امنیتی سرور
-      bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
-      bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-      
+      // --- قفل هوشمند سرور (بدون قطع کردن شبکه) ---
+      final currentIdServer = await bind.mainGetOption(key: 'custom-rendezvous-server');
+      if (currentIdServer != 'passakrd.ir') {
+        bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
+      }
+
+      final currentRelay = await bind.mainGetOption(key: 'custom-relay-server');
+      if (currentRelay != 'passakrd.ir') {
+        bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
+      }
+
+      final currentKey = await bind.mainGetOption(key: 'custom-key');
+      if (currentKey.isNotEmpty) {
+        bind.mainSetOption(key: 'custom-key', value: '');
+      }
+      // -------------------------------------------
+
       await gFFI.serverModel.fetchID();
+
+      // --- چک کردن هوشمند پسورد (ضد حروف انگلیسی) ---
+      String currentPass = gFFI.serverModel.serverPasswd.text;
+      if (currentPass.isNotEmpty && currentPass != '-') {
+        if (RegExp(r'[^0-9]').hasMatch(currentPass)) {
+          bind.mainUpdateTemporaryPassword(); 
+        }
+      }
       
-      // ارسال آیدی به رجیستری ویندوز 
+      // --- ثبت آیدی در رجیستری ویندوز ---
       String currentId = gFFI.serverModel.serverId.text;
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
         _lastSavedId = currentId; 
@@ -150,12 +171,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         setState(() {});
       }
 
+      // --- چک کردن سرویس ---
       final v = await mainGetBoolOption(kOptionStopService);
       if (v != svcStopped.value) {
         svcStopped.value = v;
         setState(() {});
       }
 
+      // --- چک کردن پرمیشن‌ها ---
       if (watchIsCanScreenRecording) {
         if (bind.mainIsCanScreenRecording(prompt: false)) {
           watchIsCanScreenRecording = false;
@@ -188,7 +211,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       }
     });
-
+    
     Get.put<RxBool>(svcStopped, tag: 'stop-service');
     rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
 
