@@ -94,7 +94,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "remotik" "\0"
             VALUE "LegalCopyright", "Copyright © 2026 Passak. All rights reserved." "\0"
-            VALUE "OriginalFilename", "rustdesk.exe" "\0"
+            VALUE "OriginalFilename", "remotik.exe" "\0"
             VALUE "ProductName", "Remotik" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

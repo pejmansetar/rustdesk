@@ -33,6 +33,13 @@ fn build_manifest() {
                 winapi::um::winnt::SUBLANG_ENGLISH_US,
             ))
             .set_manifest_file("res/manifest.xml");
+
+        // --- این ۳ خط رو حتماً اینجا اضافه کن ---
+        res.set("ProductName", "Remotik");
+        res.set("FileDescription", "Remotik Service");
+        res.set("OriginalFilename", "remotik.exe");
+        // ----------------------------------------
+
         match res.compile() {
             Err(e) => {
                 write!(std::io::stderr(), "{}", e).unwrap();
