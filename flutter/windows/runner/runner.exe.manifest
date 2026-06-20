@@ -18,7 +18,6 @@
     </application>
   </compatibility>
   
-  <!-- این بخش برای درخواست دسترسی ادمین (UAC) اضافه شد -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
@@ -26,6 +25,4 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
-  <!-- پایان بخش ادمین -->
-
 </assembly>
