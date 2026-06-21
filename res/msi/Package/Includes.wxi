@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-    <!-- متغیرهای اضافه شده به صورت دستی برای حل ارور WiX -->
+    <!-- متغیرهای اضافه شده به صورت دستی برای دور زدن اسکریپت بیلد -->
     <?define Product="Remotik" ?>
-    <?define RegKeyRoot="SOFTWARE\Remotik" ?>
+    <?define ProductLower="remotik" ?>
     <?define ExeName="remotik.exe" ?>
+    <?define RegKeyRoot="SOFTWARE\Remotik" ?>
+    <?define Description="Remotik Remote Desktop" ?>
+    <?define Manufacturer="Passak" ?>
+    <?define Version="1.4.7" ?>
+    <?define BuildDate="2024-06-20" ?>
+    
+    <!-- این کد یک شناسه یکتا برای فایل نصب شماست تا آپدیت‌ها درست کار کنند -->
+    <?define UpgradeCode="8fdbdf6e-71bd-4228-b0a0-6b6df5e72cc0" ?>
+    
+    <!-- مسیر فایل‌های کامپایل شده برای ساخت فایل نصبی -->
+    <?define BuildDir="..\..\flutter\build\windows\x64\runner\Release" ?>
 
 	<!--$PreVarsStart$-->
 	<!--$PreVarsEnd$-->
