@@ -14,8 +14,8 @@
     <!-- این کد یک شناسه یکتا برای فایل نصب شماست تا آپدیت‌ها درست کار کنند -->
     <?define UpgradeCode="8fdbdf6e-71bd-4228-b0a0-6b6df5e72cc0" ?>
     
-    <!-- مسیر قطعی و نهایی که تحت هر شرایطی پوشه فلاتر رو پیدا می‌کنه -->
-    <?define BuildDir="$(var.SolutionDir)..\..\flutter\build\windows\x64\runner\Release" ?>
+    <!-- آدرس مطلق و مستقیمِ سرور گیت‌هاب (بدون هیچ نقطه‌ای) برای دور زدن باگ WiX -->
+    <?define BuildDir="D:\a\rustdesk\rustdesk\flutter\build\windows\x64\runner\Release" ?>
 
 	<!--$PreVarsStart$-->
 	<!--$PreVarsEnd$-->
