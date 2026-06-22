@@ -139,7 +139,11 @@ jobs:
       - name: Build rustdesk
         run: |
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
-          Copy-Item -Path ./flutter/build/windows/x64/runner/Release -Destination ./rustdesk -Recurse -Force
+          
+          # ایجاد پوشه مقصد و کپی محتویات خروجی فلاتر به درون آن (شامل remotik.exe)
+          New-Item -ItemType Directory -Force -Path ./rustdesk
+          Copy-Item -Path .\flutter\build\windows\x64\runner\Release\* -Destination ./rustdesk -Recurse -Force
+          
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
           Expand-Archive usbmmidd_v2.zip -DestinationPath .
           Remove-Item -Path usbmmidd_v2\Win32 -Recurse
@@ -190,7 +194,8 @@ jobs:
           sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
+          # اصلاح نام فایل به remotik.exe برای پکیج پرتابل
+          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/remotik.exe
           popd
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
@@ -201,7 +206,7 @@ jobs:
       - name: Build msi
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
-          pushd ./res/msi
+          cd ./res/msi
           python preprocess.py --arp -d ../../rustdesk
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
@@ -215,84 +220,3 @@ jobs:
           files: |
             ./SignOutput/rustdesk-*.msi
             ./SignOutput/rustdesk-*.exe
-
-# ==============================================================================
-# بخش زیر مربوط به نسخه Sciter است. 
-# برای فعال کردن مجدد آن در آینده، کافیست علامت‌های # را از ابتدای خطوط زیر پاک کنید.
-# دقت کنید که فاصله (Space) خطوط به هم نریزد (job باید هم‌تراز با generate-bridge باشد).
-# ==============================================================================
-#  build-for-windows-sciter:
-#    name: ${{ matrix.job.target }} (${{ matrix.job.os }})
-#    runs-on: ${{ matrix.job.os }}
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        job:
-#          - {
-#              target: i686-pc-windows-msvc,
-#              os: windows-2022,
-#              arch: x86,
-#              vcpkg-triplet: x86-windows-static,
-#            }
-#    steps:
-#      - name: Checkout source code
-#        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-#        with:
-#          submodules: recursive
-#
-#      - name: Install LLVM and Clang
-#        uses: rustdesk-org/install-llvm-action-32bit@6aa7d9ad3df84dff01cd4596dd0fc880a7f47fce
-#        with:
-#          version: ${{ env.LLVM_VERSION }}
-#
-#      - name: Install Rust toolchain
-#        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
-#        with:
-#          toolchain: nightly-2023-10-13-${{ matrix.job.target }}
-#          targets: ${{ matrix.job.target }}
-#          components: "rustfmt"
-#
-#      - name: Setup vcpkg with Github Actions binary cache
-#        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2
-#        with:
-#          vcpkgDirectory: C:\vcpkg
-#          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-#          doNotCache: false
-#
-#      - name: Install vcpkg dependencies
-#        env:
-#          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
-#        run: |
-#          if ! $VCPKG_ROOT/vcpkg install --triplet ${{ matrix.job.vcpkg-triplet }} --x-install-root="$VCPKG_ROOT/installed"; then exit 1; fi
-#        shell: bash
-#
-#      - name: Build rustdesk
-#        id: build
-#        shell: bash
-#        run: |
-#          python3 res/inline-sciter.py
-#          sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
-#          cargo update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
-#          cargo build --locked --features inline,vram,hwcodec --release --bins
-#          mkdir -p ./Release
-#          mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
-#          curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
-#
-#      - name: Build self-extracted executable
-#        shell: bash
-#        run: |
-#          sed -i '/dpiAware/d' res/manifest.xml
-#          pushd ./libs/portable
-#          pip3 install -r requirements.txt
-#          python3 ./generate.py -f ../../Release/ -o . -e ../../Release/rustdesk.exe
-#          popd
-#          mkdir -p ./SignOutput
-#          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}-sciter.exe
-#
-#      - name: Publish Release
-#        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844
-#        with:
-#          prerelease: true
-#          tag_name: ${{ env.TAG_NAME }}
-#          files: |
-#            ./SignOutput/rustdesk-*.exe
