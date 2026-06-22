@@ -140,7 +140,6 @@ jobs:
         run: |
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           
-          # ایجاد پوشه مقصد و کپی محتویات خروجی فلاتر به درون آن (شامل remotik.exe)
           New-Item -ItemType Directory -Force -Path ./rustdesk
           Copy-Item -Path .\flutter\build\windows\x64\runner\Release\* -Destination ./rustdesk -Recurse -Force
           
@@ -185,7 +184,7 @@ jobs:
       - name: Upload unsigned
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
+          name: remotik-unsigned-windows-${{ matrix.job.arch }}
           path: rustdesk
 
       - name: Build self-extracted executable
@@ -194,11 +193,11 @@ jobs:
           sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          # اصلاح نام فایل به remotik.exe برای پکیج پرتابل
           python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/remotik.exe
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
+          # تغییر نام فایل نهایی خروجی به remotik
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/remotik-${{ env.VERSION }}-${{ matrix.job.arch }}.exe
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
@@ -206,11 +205,15 @@ jobs:
       - name: Build msi
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
+          $target_dir = [System.IO.Path]::GetFullPath("./rustdesk")
           cd ./res/msi
-          python preprocess.py --arp -d ../../rustdesk
+          
+          python preprocess.py --arp -d "$target_dir" --app-name "remotik"
+          
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
-          mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.msi
+          # تغییر نام فایل نهایی خروجی msi به remotik
+          mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/remotik-${{ env.VERSION }}-${{ matrix.job.arch }}.msi
 
       - name: Publish Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
@@ -218,5 +221,5 @@ jobs:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
           files: |
-            ./SignOutput/rustdesk-*.msi
-            ./SignOutput/rustdesk-*.exe
+            ./SignOutput/remotik-*.msi
+            ./SignOutput/remotik-*.exe
