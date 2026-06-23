@@ -73,7 +73,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
             child: TextField(
               controller: _idEditingController,
               // --- استفاده از کلاس سفارشی با نام جدید ---
-              inputFormatters: [CustomIdFormatter()], 
+              inputFormatters: [IDTextInputFormatter()], 
               onSubmitted: (v) {
                 if (_cleanId.isNotEmpty) {
                   connect(context, _cleanId);
@@ -194,30 +194,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
         ],
       ),
-    );
-  }
-}
-
-// --- تغییر نام به CustomIdFormatter تا با فایل‌های راست‌دسک تداخل نکنه ---
-class CustomIdFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    // گرفتن متن بدون فاصله‌ها
-    String newText = newValue.text.replaceAll(RegExp(r'\s+'), '');
-    String formatted = '';
-    
-    // اضافه کردن فاصله بعد از هر 3 کاراکتر
-    for (int i = 0; i < newText.length; i++) {
-      if (i > 0 && i % 3 == 0) {
-        formatted += ' ';
-      }
-      formatted += newText[i];
-    }
-
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

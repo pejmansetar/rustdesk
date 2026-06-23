@@ -415,7 +415,7 @@ WindowOptions getHiddenTitleBarWindowOptions(
   }
   return WindowOptions(
     size: size,
-    minimumSize: const Size(830, 620), // <--- این خط طلایی رو اضافه کردیم
+    minimumSize: const Size(840, 630), // <--- این خط طلایی رو اضافه کردیم
     center: center,
     backgroundColor: (isMacOS && isMainWindow) ? null : Colors.transparent,
     skipTaskbar: false,
