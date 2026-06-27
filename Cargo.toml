@@ -137,6 +137,7 @@ windows = { version = "0.61", features = [
     "Win32_UI_Shell",
 ] }
 winreg = "0.11"
+base64 = "0.13"
 windows-service = "0.6"
 virtual_display = { path = "libs/virtual_display" }
 remote_printer = { path = "libs/remote_printer" }

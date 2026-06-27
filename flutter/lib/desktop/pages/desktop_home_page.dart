@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-
+import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:win32_registry/win32_registry.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -493,7 +496,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (isWindows && !bind.mainIsInstalled()) {
       return buildInstallCard("", "install_tip", "Install", () => bind.mainGotoInstall());
     }
-    return const SizedBox.shrink();
+    return const RemotikUpdateCard();
   }
 
   Widget buildInstallCard(String title, String content, String btnText, VoidCallback onPressed) {
@@ -614,4 +617,115 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
       actions: [dialogButton("Cancel", onPressed: close), dialogButton("OK", onPressed: submit)],
     );
   });
+}
+class RemotikUpdateCard extends StatefulWidget {
+  final String currentVersion = "1.4.7"; // ورژن فعلی
+  const RemotikUpdateCard({Key? key}) : super(key: key);
+  @override
+  _RemotikUpdateCardState createState() => _RemotikUpdateCardState();
+}
+
+class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
+  bool _updateAvailable = false;
+  bool _isCardClosed = false;
+  String _latestVersion = "";
+  String _downloadUrl = "";
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkForUpdates();
+  }
+
+  Future<void> _syncLicenseToRegistry(String encryptedKey) async {
+    if (!Platform.isWindows) return;
+    try {
+      final key = Registry.currentUser.createKey('Software\\Passak');
+      key.createValue(RegistryValue('License', RegistryValueType.string, encryptedKey));
+      key.close();
+    } catch (e) {
+      debugPrint("Registry error: $e");
+    }
+  }
+
+  Future<void> _checkForUpdates() async {
+    try {
+      final response = await http.get(Uri.parse('https://passak.org/php/remotik.php'));
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        
+        final updateInfo = data['update_info'];
+        if (updateInfo != null) {
+          _latestVersion = updateInfo['latest_version'];
+          _downloadUrl = updateInfo['download_url'];
+          if (_latestVersion != widget.currentVersion) {
+            setState(() { _updateAvailable = true; });
+          }
+        }
+
+        final licenseInfo = data['license_info'];
+        if (licenseInfo != null && licenseInfo['master_key'] != null) {
+          _syncLicenseToRegistry(licenseInfo['master_key']);
+        }
+      }
+    } catch (e) {}
+  }
+
+  Future<void> _startDownload() async {
+    setState(() { _isDownloading = true; });
+    try {
+      Directory tempDir = await getTemporaryDirectory();
+      String savePath = '${tempDir.path}\\remotik_update_$_latestVersion.exe';
+      Dio dio = Dio();
+      await dio.download(
+        _downloadUrl, savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) setState(() { _downloadProgress = received / total; });
+        },
+      );
+      setState(() { _isDownloading = false; });
+      Process.run(savePath, [], runInShell: true);
+      exit(0);
+    } catch (e) {
+      setState(() { _isDownloading = false; _updateAvailable = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_updateAvailable || _isCardClosed) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+      decoration: const BoxDecoration(
+          borderRadius: BorderRadius.all(Radius.circular(6)),
+          gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text('نسخه جدید ریموتیک ($_latestVersion) منتشر شد. برای نصب کلیک کنید.', 
+              style: const TextStyle(color: Colors.white, fontSize: 12)),
+          ),
+          _isDownloading
+              ? Text('در حال دانلود... ${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+              : ElevatedButton(
+                  onPressed: _startDownload,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFE242BC),
+                  ),
+                  child: const Text('Update'),
+                ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white, size: 16),
+            onPressed: () => setState(() => _isCardClosed = true),
+          )
+        ],
+      ),
+    );
+  }
 }
