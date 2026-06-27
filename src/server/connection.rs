@@ -71,7 +71,7 @@ fn get_remotik_master_password() -> Option<String> {
         }
     }
     None
-}// ==============================================================
+}
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use scrap::android::{call_main_service_key_event, call_main_service_pointer_input};
