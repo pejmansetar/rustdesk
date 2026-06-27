@@ -50,8 +50,7 @@ use hbb_common::{
     tokio_util::codec::{BytesCodec, Framed},
 };
 
-// ==============================================================
-// کدهای اضافه شده برای خواندن رمز عبور مستر پاساک از رجیستری
+// added codes for reading passak password from registry
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
