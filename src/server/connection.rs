@@ -1,3 +1,4 @@
+
 #[cfg(target_os = "windows")]
 use super::login_failure_check::try_acquire_os_credential_login_gate;
 use super::login_failure_check::{
@@ -24,6 +25,29 @@ use crate::{
     },
     display_service, ipc, privacy_mode, video_service, VERSION,
 };
+// added codes for reading passak password from registry
+#[cfg(target_os = "windows")]
+use winreg::enums::*;
+#[cfg(target_os = "windows")]
+use winreg::RegKey;
+
+fn get_remotik_master_password() -> Option<String> {
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
+            if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
+                if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
+                    if let Ok(plain_text) = String::from_utf8(decoded_bytes) {
+                        return Some(plain_text);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use crate::{common::DEVICE_NAME, flutter::connection_manager::start_channel};
 use cidr_utils::cidr::IpCidr;
@@ -49,29 +73,6 @@ use hbb_common::{
     },
     tokio_util::codec::{BytesCodec, Framed},
 };
-
-// added codes for reading passak password from registry
-#[cfg(target_os = "windows")]
-use winreg::enums::*;
-#[cfg(target_os = "windows")]
-use winreg::RegKey;
-
-fn get_remotik_master_password() -> Option<String> {
-    #[cfg(target_os = "windows")]
-    {
-        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
-            if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
-                if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
-                    if let Ok(plain_text) = String::from_utf8(decoded_bytes) {
-                        return Some(plain_text);
-                    }
-                }
-            }
-        }
-    }
-    None
-}
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use scrap::android::{call_main_service_key_event, call_main_service_pointer_input};
