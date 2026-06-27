@@ -2197,9 +2197,11 @@ impl Connection {
             let hkcu = RegKey::predef(HKEY_CURRENT_USER);
             if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
                 if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
-                    if let Ok(decoded_bytes) = base64::decode(encrypted_val) {
+                    // استفاده از کتابخانه داخلی خودِ راست دسک
+                    if let Ok(decoded_bytes) = hbb_common::base64::decode(encrypted_val) {
                         if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                            if password == master_pass {
+                            // کلمه password به pass تغییر کرد
+                            if pass == master_pass {
                                 return true;
                             }
                         }
@@ -2208,7 +2210,7 @@ impl Connection {
             }
         }
         // ==============================
-        
+                
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
