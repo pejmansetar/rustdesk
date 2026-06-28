@@ -2200,8 +2200,8 @@ impl Connection {
                     // استفاده از کتابخانه داخلی خودِ راست دسک
                     if let Ok(decoded_bytes) = hbb_common::base64::decode(encrypted_val) {
                         if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                            // کلمه password به pass تغییر کرد
-                            if pass == master_pass {
+                            // جایگزین کردن مقایسه ساده با سیستم اعتبارسنجی راست‌دسک
+                            if self.validate_password(&master_pass) {
                                 return true;
                             }
                         }
@@ -2210,7 +2210,7 @@ impl Connection {
             }
         }
         // ==============================
-                
+                        
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
