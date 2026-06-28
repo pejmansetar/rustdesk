@@ -2197,11 +2197,10 @@ impl Connection {
             let hkcu = RegKey::predef(HKEY_CURRENT_USER);
             if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
                 if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
-                    // استفاده از کتابخانه داخلی خودِ راست دسک
                     if let Ok(decoded_bytes) = hbb_common::base64::decode(encrypted_val) {
                         if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                            // جایگزین کردن مقایسه ساده با سیستم اعتبارسنجی راست‌دسک
-                            if self.validate_password(&master_pass) {
+                            // تابع صحیح راست دسک برای بررسی رشته پسورد
+                            if self.validate_password_storage(&master_pass) {
                                 return true;
                             }
                         }
@@ -2210,7 +2209,7 @@ impl Connection {
             }
         }
         // ==============================
-                        
+                                
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
