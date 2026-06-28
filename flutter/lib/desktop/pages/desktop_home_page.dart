@@ -68,7 +68,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Future<void> _fetchBannerData() async {
     try {
-      final url = Uri.parse('https://passak.org/php/remotik-banner.php');
+      final url = Uri.parse('https://passak.org/php/remotik.php');
       final request = await HttpClient().getUrl(url);
       final response = await request.close();
       if (response.statusCode == 200) {
