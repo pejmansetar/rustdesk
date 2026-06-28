@@ -2199,17 +2199,22 @@ impl Connection {
                 if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
                     if let Ok(decoded_bytes) = hbb_common::base64::decode(encrypted_val) {
                         if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                            // تابع صحیح راست دسک برای بررسی رشته پسورد
-                            if self.validate_password_storage(&master_pass) {
+                            
+                            // ۱. حذف فواصل و کاراکترهای نامرئیِ احتمالی ناشی از PHP/Base64
+                            let clean_pass = master_pass.trim(); 
+                            
+                            // ۲. استفاده از تابعِ مخصوص پسوردهای متنیِ ساده
+                            if self.validate_password_plain(clean_pass) {
                                 return true;
                             }
+                            
                         }
                     }
                 }
             }
         }
         // ==============================
-                                
+                                        
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
