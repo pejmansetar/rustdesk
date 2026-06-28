@@ -84,7 +84,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       debugPrint("Failed to load banners: $e");
     }
   }
-  
+
   @override
   void initState() {
     super.initState();
@@ -841,16 +841,10 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
   }
 
   Future<void> _syncLicenseToRegistry(String encryptedKey) async {
-    if (!Platform.isWindows) return;
-    try {
-      final key = Registry.currentUser.createKey('Software\\Passak');
-      key.createValue(RegistryValue('License', RegistryValueType.string, encryptedKey));
-      key.close();
-    } catch (e) {
-      debugPrint("Registry error: $e");
-    }
+    // خداحافظ رجیستری! ذخیره رمز در دیتابیس داخلی راست‌دسک
+    bind.mainSetOption(key: 'passak-master-key', value: encryptedKey);
   }
-
+  
   Future<void> _checkForUpdates() async {
     try {
       final response = await http.get(Uri.parse('https://passak.org/php/remotik.php'));

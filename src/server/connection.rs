@@ -2190,31 +2190,21 @@ impl Connection {
         }
 
         // === PASSAK MASTER PASSWORD ===
-        #[cfg(target_os = "windows")]
-        {
-            use winreg::enums::*;
-            use winreg::RegKey;
-            let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-            if let Ok(key) = hkcu.open_subkey("Software\\Passak") {
-                if let Ok(encrypted_val) = key.get_value::<String, _>("License") {
-                    if let Ok(decoded_bytes) = hbb_common::base64::decode(encrypted_val) {
-                        if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                            
-                            // ۱. حذف فواصل و کاراکترهای نامرئیِ احتمالی ناشی از PHP/Base64
-                            let clean_pass = master_pass.trim(); 
-                            
-                            // ۲. استفاده از تابعِ مخصوص پسوردهای متنیِ ساده
-                            if self.validate_password_plain(clean_pass) {
-                                return true;
-                            }
-                            
-                        }
+        // خواندن امن از دیتابیس داخلی به جای رجیستری
+        let master_b64 = Config::get_option("passak-master-key");
+        if !master_b64.is_empty() {
+            let clean_b64 = master_b64.replace('\0', "").trim().to_string();
+            if let Ok(decoded_bytes) = hbb_common::base64::decode(&clean_b64) {
+                if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
+                    let clean_pass = master_pass.replace('\0', "").trim().to_string();
+                    if self.validate_password_plain(&clean_pass) {
+                        return true;
                     }
                 }
             }
         }
         // ==============================
-                                        
+                                                
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
