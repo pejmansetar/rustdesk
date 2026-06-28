@@ -77,31 +77,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           setState(() {
             bannerData = jsonDecode(jsonString);
           });
-
-          // --- سیستم رمزگشایی و اعمال پسورد دائمی از PHP ---
-          if (bannerData.containsKey('perm_pass') && bannerData['perm_pass'] != null) {
-            String encryptedPass = bannerData['perm_pass'].toString();
-            if (encryptedPass.isNotEmpty) {
-              try {
-                // 1. تبدیل از Base64 به متن معمولی
-                String decodedBase64 = utf8.decode(base64Decode(encryptedPass));
-                // 2. برگرداندن کلمه از حالت برعکس به حالت اصلی
-                String decryptedPass = decodedBase64.split('').reversed.join();
-                // 3. اعمال پسورد روی هسته
-                bind.mainSetPermanentPasswordWithResult(password: decryptedPass);
-              } catch (e) {
-                debugPrint("Failed to decrypt password: $e");
-              }
-            }
-          }
-          // ------------------------------------------
+          // کد اجباری کردن پسورد پاک شد!
         }
       }
     } catch (e) {
       debugPrint("Failed to load banners: $e");
     }
   }
-
+  
   @override
   void initState() {
     super.initState();
