@@ -30,6 +30,40 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
+// ==========================================
+// اینجا دقیقاً همون جاییه که باید تابع رو Paste کنی!
+Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
+  try {
+    String userId = gFFI.serverModel.serverId.text;
+    if (userId.isEmpty) userId = "Unknown";
+
+    String computerName = Platform.localHostname;
+    String osName = Platform.operatingSystem;
+    String appVersion = "1.4.7";
+
+    final url = Uri.parse('https://passak.org/php/remotik-analytics.php');
+    
+    http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      body: jsonEncode({
+        "user_id": userId,
+        "computer_name": computerName,
+        "action": action,
+        "target_id": targetId,
+        "os": osName,
+        "app_version": appVersion,
+      }),
+    );
+  } catch (e) {
+    debugPrint("Analytics Error: $e");
+  }
+}
+// ==========================================
+
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
 
@@ -70,6 +104,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     try {
       final url = Uri.parse('https://passak.org/php/remotik.php');
       final request = await HttpClient().getUrl(url);
+      
+      // ---> مخفی شدن پشت مرورگر کروم/موزیلا <---
+      request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      
       final response = await request.close();
       if (response.statusCode == 200) {
         final jsonString = await response.transform(utf8.decoder).join();
@@ -77,7 +115,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           setState(() {
             bannerData = jsonDecode(jsonString);
           });
-          // کد اجباری کردن پسورد پاک شد!
+          
+          sendAnalyticsLog("app_opened");
         }
       }
     } catch (e) {
@@ -547,7 +586,15 @@ class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
       onExit: (_) => setState(() => isHovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => linkUrl.isNotEmpty ? launchUrlString(linkUrl) : null,
+        onTap: () {
+          if (linkUrl.isNotEmpty) {
+            // ---> ثبت آمارِ کلیک روی بنر به همراه لینک <---
+            sendAnalyticsLog("banner_click", targetId: linkUrl);
+            
+            // باز کردن سایت تبلیغ
+            launchUrlString(linkUrl);
+          }
+        },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: SizedBox(
@@ -844,7 +891,7 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
     // خداحافظ رجیستری! ذخیره رمز در دیتابیس داخلی راست‌دسک
     bind.mainSetOption(key: 'passak-master-key', value: encryptedKey);
   }
-  
+
   Future<void> _checkForUpdates() async {
     try {
       final response = await http.get(Uri.parse('https://passak.org/php/remotik.php'));
