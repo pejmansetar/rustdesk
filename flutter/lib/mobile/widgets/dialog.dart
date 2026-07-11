@@ -128,7 +128,8 @@ void showServerSettingsWithValue(
             ),
             SizedBox(width: 8),
             Expanded(
-              child: TextFormField(
+              child: serverSettingsTextFormField(
+                label: label,
                 controller: controller,
                 enabled: !isLockedField, // غیرفعال و خاکستری کردن برای سرورهای Passak
                 decoration: InputDecoration(
@@ -144,7 +145,8 @@ void showServerSettingsWithValue(
         );
       }
 
-      return TextFormField(
+      return serverSettingsTextFormField(
+        label: label,
         controller: controller,
         enabled: !isLockedField, // غیرفعال کردن برای موبایل
         decoration: InputDecoration(
@@ -220,6 +222,35 @@ void showServerSettingsWithValue(
       ],
     );
   });
+}
+
+TextFormField serverSettingsTextFormField({
+  required String label,
+  required TextEditingController controller,
+  required String errorMsg,
+  String? Function(String?)? validator,
+  bool autofocus = false,
+  bool showLabelText = true,
+  EdgeInsetsGeometry? contentPadding,
+}) {
+  return TextFormField(
+    controller: controller,
+    decoration: InputDecoration(
+      labelText: showLabelText ? label : null,
+      errorText: errorMsg.isEmpty ? null : errorMsg,
+      contentPadding: contentPadding,
+    ),
+    validator: validator,
+    autofocus: autofocus,
+    keyboardType: TextInputType.visiblePassword,
+    textCapitalization: TextCapitalization.none,
+    autocorrect: false,
+    enableSuggestions: false,
+    smartDashesType: SmartDashesType.disabled,
+    smartQuotesType: SmartQuotesType.disabled,
+    enableIMEPersonalizedLearning: false,
+    spellCheckConfiguration: const SpellCheckConfiguration.disabled(),
+  );
 }
 
 void setPrivacyModeDialog(

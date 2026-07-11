@@ -70,25 +70,144 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 5),
           Expanded(
-            child: TextField(
-              controller: _idEditingController,
-              // --- استفاده از کلاس سفارشی با نام جدید ---
-              inputFormatters: [IDTextInputFormatter()], 
-              onSubmitted: (v) {
-                if (_cleanId.isNotEmpty) {
-                  connect(context, _cleanId);
+            child: RawAutocomplete<Peer>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  _autocompleteOpts = const Iterable<Peer>.empty();
+                } else if (_allPeersLoader.peers.isEmpty && !_allPeersLoader.isPeersLoaded) {
+                  Peer emptyPeer = Peer(
+                    id: '', username: '', hostname: '', alias: '', platform: '',
+                    tags: [], hash: '', password: '', forceAlwaysRelay: false,
+                    rdpPort: '', rdpUsername: '', loginName: '', device_group_name: '', note: '',
+                  );
+                  _autocompleteOpts = [emptyPeer];
+                } else {
+                  String textWithoutSpaces = textEditingValue.text.replaceAll(" ", "");
+                  if (int.tryParse(textWithoutSpaces) != null) {
+                    textEditingValue = TextEditingValue(
+                      text: textWithoutSpaces,
+                      selection: textEditingValue.selection,
+                    );
+                  }
+                  String textToFind = textEditingValue.text.toLowerCase();
+                  _autocompleteOpts = _allPeersLoader.peers.where((peer) =>
+                          peer.id.toLowerCase().contains(textToFind) ||
+                          peer.username.toLowerCase().contains(textToFind) ||
+                          peer.hostname.toLowerCase().contains(textToFind) ||
+                          peer.alias.toLowerCase().contains(textToFind))
+                      .toList();
+                  _allPeersLoader.queryOnlines(_autocompleteOpts);
                 }
+                return _autocompleteOpts;
               },
-              style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
-              decoration: InputDecoration(
-                hintText: translate('Enter remote ID'),
-                fillColor: Colors.grey.withOpacity(0.1),
-                filled: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-              ),
-              onChanged: (v) => _idController.id = v,
+              focusNode: _idFocusNode,
+              textEditingController: _idEditingController,
+              fieldViewBuilder: (
+                BuildContext context,
+                TextEditingController fieldTextEditingController,
+                FocusNode fieldFocusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                updateTextAndPreserveSelection(fieldTextEditingController, _idController.text);
+                return TextField(
+                  focusNode: fieldFocusNode,
+                  controller: fieldTextEditingController,
+                  inputFormatters: [IDTextInputFormatter()], 
+                  style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
+                  decoration: InputDecoration(
+                    hintText: translate('Enter remote ID'),
+                    fillColor: Colors.grey.withOpacity(0.1),
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                  ),
+                  onChanged: (v) => _idController.id = v,
+                  onSubmitted: (v) {
+                    if (_cleanId.isNotEmpty) {
+                      connect(context, _cleanId);
+                    }
+                  },
+                ).workaroundFreezeLinuxMint();
+              },
+              onSelected: (option) {
+                setState(() {
+                  _idController.id = option.id;
+                  FocusScope.of(context).unfocus();
+                });
+              },
+              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<Peer> onSelected, Iterable<Peer> options) {
+                options = _autocompleteOpts;
+                double maxHeight = options.length * 50;
+                if (options.length == 1) maxHeight = 52;
+                else if (options.length == 3) maxHeight = 146;
+                else if (options.length == 4) maxHeight = 193;
+                maxHeight = maxHeight.clamp(0, 200);
+
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(5),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: maxHeight, maxWidth: 319),
+                      child: _allPeersLoader.peers.isEmpty && !_allPeersLoader.isPeersLoaded
+                          ? Container(height: 80, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)))
+                          : Padding(
+                              padding: const EdgeInsets.only(top: 5),
+                              child: ListView(
+                                children: options.map((peer) => AutocompletePeerTile(onSelect: () => onSelected(peer), peer: peer)).toList(),
+                              ),
+                            ),
+                    ),
+                  ),
+                );
+              },
             ),
+          ),
+          const SizedBox(width: 15),
+          
+          // دکمه Connect 
+          Container(
+            height: 44, 
+            decoration: BoxDecoration(
+              color: const Color(0xFF0078D7), 
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () {
+                  if (_cleanId.isNotEmpty) {
+                    connect(context, _cleanId);
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Center(
+                    child: Text(
+                      translate('Connect'),
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+            const SizedBox(width: 15),
+          
+          // دکمه Connect و منوی کشویی بهینه‌شده
+          Container(
+            height: 44, 
+            decoration: BoxDecoration(
+              color: const Color(0xFF0078D7), 
+              borderRadius: BorderRadius.circular(4),
+            ),            ),
           ),
           const SizedBox(width: 15),
           
