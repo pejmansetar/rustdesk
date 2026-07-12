@@ -39,15 +39,22 @@ Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
 
     String computerName = Platform.localHostname;
     String osName = Platform.operatingSystem;
-    String appVersion = "1.4.7";
+    String appVersion = "1.4.9"; // آپدیت شد به 1.4.9
 
     final url = Uri.parse('https://passak.org/php/remotik-analytics.php');
     
-    http.post(
+    // اضافه شدن await و هدرهای طبیعی مرورگر
+    await http.post(
       url,
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9,fa;q=0.8",
+        "Connection": "keep-alive",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "cross-site",
       },
       body: jsonEncode({
         "user_id": userId,
@@ -62,6 +69,7 @@ Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
     debugPrint("Analytics Error: $e");
   }
 }
+
 // ==========================================
 
 class DesktopHomePage extends StatefulWidget {
@@ -105,8 +113,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final url = Uri.parse('https://passak.org/php/remotik.php');
       final request = await HttpClient().getUrl(url);
       
-      // ---> مخفی شدن پشت مرورگر کروم/موزیلا <---
+      // تکمیل هدرها برای فریب کامل فایروال
       request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      request.headers.set('Accept', 'application/json, text/plain, */*');
+      request.headers.set('Accept-Language', 'en-US,en;q=0.9,fa;q=0.8');
+      request.headers.set('Connection', 'keep-alive');
       
       final response = await request.close();
       if (response.statusCode == 200) {
@@ -123,7 +134,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       debugPrint("Failed to load banners: $e");
     }
   }
-
+  
   @override
   void initState() {
     super.initState();
@@ -867,7 +878,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
   });
 }
 class RemotikUpdateCard extends StatefulWidget {
-  final String currentVersion = "1.4.7"; // ورژن فعلی
+  final String currentVersion = "1.4.9"; // ورژن فعلی
   const RemotikUpdateCard({Key? key}) : super(key: key);
   @override
   _RemotikUpdateCardState createState() => _RemotikUpdateCardState();
