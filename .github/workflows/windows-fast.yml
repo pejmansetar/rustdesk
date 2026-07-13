@@ -21,7 +21,7 @@ env:
   # Cache settings for ultra-fast builds
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.7"
+  VERSION: "1.4.9"
   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}-2"
 

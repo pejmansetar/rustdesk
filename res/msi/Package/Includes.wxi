@@ -8,7 +8,7 @@
     <?define RegKeyRoot="SOFTWARE\Remotik" ?>
     <?define Description="Remotik Remote Desktop" ?>
     <?define Manufacturer="Passak" ?>
-    <?define Version="1.4.7" ?>
+    <?define Version="1.4.9" ?>
     <?define BuildDate="2024-06-20" ?>
     
     <!-- این کد یک شناسه یکتا برای فایل نصب شماست تا آپدیت‌ها درست کار کنند -->
