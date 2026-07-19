@@ -232,8 +232,10 @@ TextFormField serverSettingsTextFormField({
   bool autofocus = false,
   bool showLabelText = true,
   EdgeInsetsGeometry? contentPadding,
+  bool enabled = true,
 }) {
   return TextFormField(
+    enabled: enabled,
     controller: controller,
     decoration: InputDecoration(
       labelText: showLabelText ? label : null,

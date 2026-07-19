@@ -22,6 +22,9 @@ class ConnectionPage extends StatefulWidget {
 class _ConnectionPageState extends State<ConnectionPage> {
   final _idController = IDTextEditingController();
   final _idEditingController = TextEditingController();
+  final FocusNode _idFocusNode = FocusNode();
+  Iterable<Peer> _autocompleteOpts = const Iterable<Peer>.empty();
+  late final PeerSearchLoader _allPeersLoader = PeerSearchLoader(onUpdate: () => setState(() {}));
 
   @override
   void initState() {
@@ -302,6 +305,21 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+class AutocompletePeerTile extends StatelessWidget {
+  final Peer peer;
+  final VoidCallback? onPressed;
+
+  const AutocompletePeerTile({Key? key, required this.peer, this.onPressed}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(peer.id, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(peer.alias.isNotEmpty ? peer.alias : peer.hostname),
+      onTap: onPressed,
     );
   }
 }
