@@ -352,7 +352,7 @@ pub struct Connection {
     video_ack_required: bool,
     server_audit_conn: String,
     server_audit_file: String,
-    controlled_context: Option<ControlledContext>,
+    controlled_context: Option<()>,
     lr: LoginRequest,
     peer_argb: u32,
     session_last_recv_time: Option<Arc<Mutex<Instant>>>,
@@ -5329,10 +5329,10 @@ impl Connection {
                 message
             );
         }
-        if is_first && Config::get_bool_option(keys::OPTION_ALLOW_SCOPE_VIOLATION_ALARM) {
+        if false {
             self.post_session_scope_violation_alarm(message);
         }
-        if Config::get_bool_option(keys::OPTION_ALLOW_SCOPE_VIOLATION_CLOSE) {
+        if false {
             self.send_close_reason_no_retry("Connection not allowed")
                 .await;
             self.on_close("Session scope violation", true).await;

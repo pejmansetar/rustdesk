@@ -35,7 +35,7 @@ type Message = RendezvousMessage;
 
 fn connection_meta(
     control_permissions: Option<ControlPermissions>,
-    controlled_context: Option<ControlledContext>,
+    controlled_context: Option<()>,
 ) -> ConnectionMeta {
     ConnectionMeta {
         control_permissions,
