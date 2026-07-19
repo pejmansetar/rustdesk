@@ -1418,7 +1418,7 @@ impl Connection {
         let audit_ref = self
             .controlled_context
             .as_ref()
-            .map(|c| c.conn_audit_ref.as_str())?;
+            .map(|_| "")?;
         if audit_ref.is_empty() {
             None
         } else {
