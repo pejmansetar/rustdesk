@@ -132,11 +132,8 @@ void showServerSettingsWithValue(
                 label: label,
                 controller: controller,
                 enabled: !isLockedField, // غیرفعال و خاکستری کردن برای سرورهای Passak
-                decoration: InputDecoration(
-                  errorText: errorMsg.isEmpty ? null : errorMsg,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                ),
+                errorMsg: errorMsg,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 validator: validator,
                 autofocus: !isLockedField && autofocus, 
               ).workaroundFreezeLinuxMint(),
@@ -149,10 +146,7 @@ void showServerSettingsWithValue(
         label: label,
         controller: controller,
         enabled: !isLockedField, // غیرفعال کردن برای موبایل
-        decoration: InputDecoration(
-          labelText: label,
-          errorText: errorMsg.isEmpty ? null : errorMsg,
-        ),
+        errorMsg: errorMsg,
         validator: validator,
       ).workaroundFreezeLinuxMint();
     }

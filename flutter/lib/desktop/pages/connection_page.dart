@@ -6,7 +6,7 @@ import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import '../../common.dart';
-import '../../common/formatter/id_formatter.dart'; // <--- این خط حیاتی برگشت!
+import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 
@@ -22,9 +22,6 @@ class ConnectionPage extends StatefulWidget {
 class _ConnectionPageState extends State<ConnectionPage> {
   final _idController = IDTextEditingController();
   final _idEditingController = TextEditingController();
-  final FocusNode _idFocusNode = FocusNode();
-  Iterable<Peer> _autocompleteOpts = const Iterable<Peer>.empty();
-  late final PeerSearchLoader _allPeersLoader = PeerSearchLoader(onUpdate: () => setState(() {}));
 
   @override
   void initState() {
@@ -72,168 +69,64 @@ class _ConnectionPageState extends State<ConnectionPage> {
             onPressed: () => DesktopSettingPage.switch2page(SettingsTabKey.general),
           ),
           const SizedBox(width: 5),
+          
+          // فیلد ورود آیدی (جایگزین Autocomplete خراب)
           Expanded(
-            child: RawAutocomplete<Peer>(
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text == '') {
-                  _autocompleteOpts = const Iterable<Peer>.empty();
-                } else if (_allPeersLoader.peers.isEmpty && !_allPeersLoader.isPeersLoaded) {
-                  Peer emptyPeer = Peer(
-                    id: '', username: '', hostname: '', alias: '', platform: '',
-                    tags: [], hash: '', password: '', forceAlwaysRelay: false,
-                    rdpPort: '', rdpUsername: '', loginName: '', device_group_name: '', note: '',
-                  );
-                  _autocompleteOpts = [emptyPeer];
-                } else {
-                  String textWithoutSpaces = textEditingValue.text.replaceAll(" ", "");
-                  if (int.tryParse(textWithoutSpaces) != null) {
-                    textEditingValue = TextEditingValue(
-                      text: textWithoutSpaces,
-                      selection: textEditingValue.selection,
-                    );
-                  }
-                  String textToFind = textEditingValue.text.toLowerCase();
-                  _autocompleteOpts = _allPeersLoader.peers.where((peer) =>
-                          peer.id.toLowerCase().contains(textToFind) ||
-                          peer.username.toLowerCase().contains(textToFind) ||
-                          peer.hostname.toLowerCase().contains(textToFind) ||
-                          peer.alias.toLowerCase().contains(textToFind))
-                      .toList();
-                  _allPeersLoader.queryOnlines(_autocompleteOpts);
+            child: TextField(
+              controller: _idEditingController,
+              inputFormatters: [IDTextInputFormatter()], 
+              style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
+              decoration: InputDecoration(
+                hintText: translate('Enter remote ID'),
+                fillColor: Colors.grey.withOpacity(0.1),
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+              ),
+              onChanged: (v) => _idController.id = v,
+              onSubmitted: (_) {
+                if (_cleanId.isNotEmpty) {
+                  connect(context, _cleanId);
                 }
-                return _autocompleteOpts;
               },
-              focusNode: _idFocusNode,
-              textEditingController: _idEditingController,
-              fieldViewBuilder: (
-                BuildContext context,
-                TextEditingController fieldTextEditingController,
-                FocusNode fieldFocusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                updateTextAndPreserveSelection(fieldTextEditingController, _idController.text);
-                return TextField(
-                  focusNode: fieldFocusNode,
-                  controller: fieldTextEditingController,
-                  inputFormatters: [IDTextInputFormatter()], 
-                  style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
-                  decoration: InputDecoration(
-                    hintText: translate('Enter remote ID'),
-                    fillColor: Colors.grey.withOpacity(0.1),
-                    filled: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-                  ),
-                  onChanged: (v) => _idController.id = v,
-                  onSubmitted: (v) {
-                    if (_cleanId.isNotEmpty) {
-                      connect(context, _cleanId);
-                    }
-                  },
-                ).workaroundFreezeLinuxMint();
-              },
-              onSelected: (option) {
-                setState(() {
-                  _idController.id = option.id;
-                  FocusScope.of(context).unfocus();
-                });
-              },
-              optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<Peer> onSelected, Iterable<Peer> options) {
-                options = _autocompleteOpts;
-                double maxHeight = options.length * 50;
-                if (options.length == 1) maxHeight = 52;
-                else if (options.length == 3) maxHeight = 146;
-                else if (options.length == 4) maxHeight = 193;
-                maxHeight = maxHeight.clamp(0, 200);
-
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4,
-                    borderRadius: BorderRadius.circular(5),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: maxHeight, maxWidth: 319),
-                      child: _allPeersLoader.peers.isEmpty && !_allPeersLoader.isPeersLoaded
-                          ? Container(height: 80, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)))
-                          : Padding(
-                              padding: const EdgeInsets.only(top: 5),
-                              child: ListView(
-                                children: options.map((peer) => AutocompletePeerTile(onSelect: () => onSelected(peer), peer: peer)).toList(),
-                              ),
-                            ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            ).workaroundFreezeLinuxMint(),
           ),
           const SizedBox(width: 15),
-          
-          // دکمه Connect 
+            
+          // دکمه Connect و منوی کشویی بهینه‌شده
           Container(
             height: 44, 
             decoration: BoxDecoration(
               color: const Color(0xFF0078D7), 
               borderRadius: BorderRadius.circular(4),
             ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: () {
-                    if (_cleanId.isNotEmpty) {
-                      connect(context, _cleanId);
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(
-                      child: Text(
-                        translate('Connect'),
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            
-            const SizedBox(width: 15),
-            
-            // دکمه Connect و منوی کشویی بهینه‌شده
-            Container(
-              height: 44, 
-              decoration: BoxDecoration(
-                color: const Color(0xFF0078D7), 
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
-                      hoverColor: Colors.white.withOpacity(0.15),
-                      splashColor: Colors.white.withOpacity(0.2),
-                      highlightColor: Colors.white.withOpacity(0.1),
-                      onTap: () {
-                        if (_cleanId.isNotEmpty) {
-                          connect(context, _cleanId);
-                        }
-                      }, 
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                        child: Center(
-                          child: Text(
-                            translate("Connect"), 
-                            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)
-                          ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(4)),
+                    hoverColor: Colors.white.withOpacity(0.15),
+                    splashColor: Colors.white.withOpacity(0.2),
+                    highlightColor: Colors.white.withOpacity(0.1),
+                    onTap: () {
+                      if (_cleanId.isNotEmpty) {
+                        connect(context, _cleanId);
+                      }
+                    }, 
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: Center(
+                        child: Text(
+                          translate("Connect"), 
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)
                         ),
                       ),
                     ),
                   ),
-        Container(width: 1, color: Colors.white.withOpacity(0.3), height: 28), 
+                ),
+                Container(width: 1, color: Colors.white.withOpacity(0.3), height: 28), 
                 
                 Material(
                   color: Colors.transparent,
@@ -305,21 +198,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
           Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
         ],
       ),
-    );
-  }
-}
-class AutocompletePeerTile extends StatelessWidget {
-  final Peer peer;
-  final VoidCallback? onPressed;
-
-  const AutocompletePeerTile({Key? key, required this.peer, this.onPressed}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(peer.id, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(peer.alias.isNotEmpty ? peer.alias : peer.hostname),
-      onTap: onPressed,
     );
   }
 }
