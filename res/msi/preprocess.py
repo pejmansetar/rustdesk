@@ -85,11 +85,7 @@ def make_parser():
         "-m",
         "--manufacturer",
         type=str,
-<<<<<<< HEAD
         default="PASSAK",
-=======
-        default="Purslane Tech Pte. Ltd.",
->>>>>>> upstream/master
         help="The app manufacturer.",
     )
     return parser
