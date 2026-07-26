@@ -40,6 +40,43 @@ class _ConnectionPageState extends State<ConnectionPage> {
       body: Column(
         children: [
           _buildTopConnectBar(context),
+          
+          // =========================================================
+          // متن اختصاصی Remotik (ضد بیرون‌زدگی و کاملاً ریسپانسیو)
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 6.0, left: 20.0, right: 20.0),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown, // این خط جادو می‌کنه! اگر کادر کوچیک بشه، فونت رو کوچیک می‌کنه
+                child: RichText(
+                  text: const TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Remotik ',
+                        style: TextStyle(
+                          color: Color(0xFF0078D7), // آبیِ دکمه Connect
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'remote desktop',
+                        style: TextStyle(
+                          color: Color(0xFF666666), // خاکستری تیره
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // =========================================================
+
           if (widget.topContent != null) widget.topContent!,
           const Divider(height: 1),
           // بخش لیست سیستم‌ها 

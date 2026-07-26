@@ -463,7 +463,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 65, child: Text(translate("One-time"), textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: labelColor))),
+                  SizedBox(width: 65, child: Text(translate("One-time-password"), textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: labelColor))),
                   const SizedBox(width: 12),
                   Container(
                     width: 280, padding: const EdgeInsets.symmetric(vertical: 6),
