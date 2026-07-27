@@ -42,31 +42,29 @@ class _ConnectionPageState extends State<ConnectionPage> {
           _buildTopConnectBar(context),
           
           // =========================================================
-          // متن اختصاصی Remotik (ضد بیرون‌زدگی و کاملاً ریسپانسیو)
+          // متن ظریف و کوچیک دقیقاً تو همون گپ (بدون هل دادن کارت به پایین)
           Padding(
-            padding: const EdgeInsets.only(top: 16.0, bottom: 6.0, left: 20.0, right: 20.0),
+            padding: const EdgeInsets.only(top: 8.0), // حداقل فاصله فقط از بالا
             child: Center(
               child: FittedBox(
-                fit: BoxFit.scaleDown, // این خط جادو می‌کنه! اگر کادر کوچیک بشه، فونت رو کوچیک می‌کنه
+                fit: BoxFit.scaleDown,
                 child: RichText(
                   text: const TextSpan(
                     children: [
                       TextSpan(
                         text: 'Remotik ',
                         style: TextStyle(
-                          color: Color(0xFF0078D7), // آبیِ دکمه Connect
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
+                          color: Color(0xFF0078D7), // آبی
+                          fontSize: 15,             // سایز ریز و استاندارد
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                       TextSpan(
                         text: 'remote desktop',
                         style: TextStyle(
-                          color: Color(0xFF666666), // خاکستری تیره
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
+                          color: Color(0xFF888888), // خاکستری ملایم
+                          fontSize: 11,             // سایز خیلی کوچیک‌تر
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -92,7 +90,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       ),
     );
   }
-
+  
   Widget _buildTopConnectBar(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
