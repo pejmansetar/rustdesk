@@ -3611,27 +3611,30 @@ pub fn handle_custom_client_staging_dir_before_update(
 
 // Used for auto update and manual update in the main window.
 pub fn update_to(file: &str) -> ResultType<()> {
+    let mut actual_file = file.to_string();
+
+    // جادوی حل مشکل: اگر دانلودر فایل msi شما را با اسم exe ذخیره کرده بود،
+    // نام آن را در هارد ویندوز به msi برمی‌گردانیم تا ویندوز گیج نشود و کرش نکند.
     if file.ends_with(".exe") {
-        let custom_client_staging_dir = get_custom_client_staging_dir();
-        if crate::is_custom_client() {
-            handle_custom_client_staging_dir_before_update(&custom_client_staging_dir)?;
-        } else {
-            // Clean up any residual staging directory from previous custom client
-            allow_err!(remove_custom_client_staging_dir(&custom_client_staging_dir));
+        let msi_path = file.replace(".exe", ".msi");
+        let _ = std::fs::remove_file(&msi_path); 
+        if std::fs::rename(file, &msi_path).is_ok() {
+            actual_file = msi_path;
         }
-        if !run_uac(file, "--update")? {
-            bail!(
-                "Failed to run the update exe with UAC, error: {:?}",
-                std::io::Error::last_os_error()
-            );
-        }
-    } else if file.ends_with(".msi") {
-        if let Err(e) = update_me_msi(file, false) {
+    }
+
+    // حالا که فایل پسوند درست دارد، آن را نصب می‌کنیم
+    if actual_file.ends_with(".msi") {
+        if let Err(e) = update_me_msi(&actual_file, false) {
             bail!("Failed to run the update msi: {}", e);
         }
     } else {
-        bail!("Unsupported update file format: {}", file);
+        // این بخش فقط برای زمانی است که فایل واقعاً یک exe سالم باشد
+        if !run_uac(&actual_file, "--update")? {
+            bail!("Failed to run the update exe");
+        }
     }
+    
     Ok(())
 }
 // Don't launch tray app when running with `\qn`.
