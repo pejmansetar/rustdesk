@@ -3613,8 +3613,8 @@ pub fn handle_custom_client_staging_dir_before_update(
 pub fn update_to(file: &str) -> ResultType<()> {
     let mut actual_file = file.to_string();
 
-    // جادوی حل مشکل: اگر دانلودر فایل msi شما را با اسم exe ذخیره کرده بود،
-    // نام آن را در هارد ویندوز به msi برمی‌گردانیم تا ویندوز گیج نشود و کرش نکند.
+    // از آنجا که ما مطمئنیم فایل دانلودیِ ما MSI است، 
+    // اگر دانلودرِ برنامه به اشتباه پسوند exe روی آن گذاشته بود، آن را به msi تغییر می‌دهیم:
     if file.ends_with(".exe") {
         let msi_path = file.replace(".exe", ".msi");
         let _ = std::fs::remove_file(&msi_path); 
@@ -3623,16 +3623,9 @@ pub fn update_to(file: &str) -> ResultType<()> {
         }
     }
 
-    // حالا که فایل پسوند درست دارد، آن را نصب می‌کنیم
-    if actual_file.ends_with(".msi") {
-        if let Err(e) = update_me_msi(&actual_file, false) {
-            bail!("Failed to run the update msi: {}", e);
-        }
-    } else {
-        // این بخش فقط برای زمانی است که فایل واقعاً یک exe سالم باشد
-        if !run_uac(&actual_file, "--update")? {
-            bail!("Failed to run the update exe");
-        }
+    // اجرای قطعی فایل با دستورات استاندارد ویندوز برای MSI
+    if let Err(e) = update_me_msi(&actual_file, false) {
+        bail!("Failed to run the update msi: {}", e);
     }
     
     Ok(())
