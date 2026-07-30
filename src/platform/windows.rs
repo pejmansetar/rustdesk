@@ -3611,39 +3611,49 @@ pub fn handle_custom_client_staging_dir_before_update(
 
 // Used for auto update and manual update in the main window.
 pub fn update_to(file: &str) -> ResultType<()> {
-    // 1. ثبت مسیر دقیق فایلی که دانلودر به این تابع پاس داده است
-    log::info!("--- UPDATE PROCESS STARTED ---");
-    log::info!("Downloaded file path received: {}", file);
-
     let mut actual_file = file.to_string();
 
+    // 1. اگر فایل با نام exe ذخیره شده بود، حتماً باید msi شود
     if file.ends_with(".exe") {
-        log::info!("File has .exe extension. Attempting to copy to .msi...");
         let msi_path = file.replace(".exe", ".msi");
-        let _ = std::fs::remove_file(&msi_path); 
+        let _ = std::fs::remove_file(&msi_path);
         
-        match std::fs::copy(file, &msi_path) {
-            Ok(_) => {
-                log::info!("Successfully copied file to: {}", msi_path);
-                actual_file = msi_path;
+        let mut success = false;
+        
+        // حلقه تلاش مجدد (Retry Loop): 
+        // چون ویندوز فایل دانلودی را برای کسری از ثانیه قفل می‌کند، 
+        // ما 50 بار (هر بار 100 میلی‌ثانیه) تلاش می‌کنیم تا قفل باز شود و اسم فایل تغییر کند.
+        for _ in 0..50 {
+            if std::fs::rename(file, &msi_path).is_ok() {
+                success = true;
+                break;
             }
-            Err(e) => {
-                log::error!("CRITICAL ERROR: Failed to copy file! Reason: {}", e);
-            }
+            std::thread::sleep(std::time::Duration::from_millis(100)); // یک دهم ثانیه مکث
+        }
+
+        if success {
+            actual_file = msi_path;
+        } else {
+            bail!("CRITICAL: Failed to rename the file. It is locked by Windows!");
         }
     }
 
-    log::info!("Final file to execute: {}", actual_file);
-
+    // 2. حالا که مطمئنیم پسوند فایل ۱۰۰٪ msi شده، آن را به ویندوز می‌دهیم
     if actual_file.ends_with(".msi") {
-        log::info!("Calling update_me_msi function...");
-        if let Err(e) = update_me_msi(&actual_file, false) {
-            log::error!("CRITICAL ERROR: update_me_msi failed! Reason: {}", e);
-            bail!("Failed to run the update msi: {}", e);
+        match std::process::Command::new("msiexec.exe")
+            .arg("/i")
+            .arg(&actual_file)
+            .arg("/qb") // نمایش نوار پیشرفت (Progress Bar)
+            .spawn()
+        {
+            Ok(_) => {
+                // ارسال موفق بود. حالا ریموتیک می‌تواند بسته شود.
+            }
+            Err(e) => {
+                bail!("Failed to start msiexec: {}", e);
+            }
         }
-        log::info!("msiexec triggered successfully in the background.");
     } else {
-        log::error!("CRITICAL ERROR: File format unsupported: {}", actual_file);
         bail!("Unsupported update file format: {}", actual_file);
     }
     
