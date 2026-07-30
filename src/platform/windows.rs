@@ -3611,28 +3611,40 @@ pub fn handle_custom_client_staging_dir_before_update(
 
 // Used for auto update and manual update in the main window.
 pub fn update_to(file: &str) -> ResultType<()> {
+    // 1. ثبت مسیر دقیق فایلی که دانلودر به این تابع پاس داده است
+    log::info!("--- UPDATE PROCESS STARTED ---");
+    log::info!("Downloaded file path received: {}", file);
+
     let mut actual_file = file.to_string();
 
-    // جادوی حل مشکل: اگر دانلودر فایل msi شما را با اسم exe ذخیره کرده بود،
-    // نام آن را در هارد ویندوز به msi برمی‌گردانیم تا ویندوز گیج نشود و کرش نکند.
     if file.ends_with(".exe") {
+        log::info!("File has .exe extension. Attempting to copy to .msi...");
         let msi_path = file.replace(".exe", ".msi");
         let _ = std::fs::remove_file(&msi_path); 
-        if std::fs::rename(file, &msi_path).is_ok() {
-            actual_file = msi_path;
+        
+        match std::fs::copy(file, &msi_path) {
+            Ok(_) => {
+                log::info!("Successfully copied file to: {}", msi_path);
+                actual_file = msi_path;
+            }
+            Err(e) => {
+                log::error!("CRITICAL ERROR: Failed to copy file! Reason: {}", e);
+            }
         }
     }
 
-    // حالا که فایل پسوند درست دارد، آن را نصب می‌کنیم
+    log::info!("Final file to execute: {}", actual_file);
+
     if actual_file.ends_with(".msi") {
+        log::info!("Calling update_me_msi function...");
         if let Err(e) = update_me_msi(&actual_file, false) {
+            log::error!("CRITICAL ERROR: update_me_msi failed! Reason: {}", e);
             bail!("Failed to run the update msi: {}", e);
         }
+        log::info!("msiexec triggered successfully in the background.");
     } else {
-        // این بخش فقط برای زمانی است که فایل واقعاً یک exe سالم باشد
-        if !run_uac(&actual_file, "--update")? {
-            bail!("Failed to run the update exe");
-        }
+        log::error!("CRITICAL ERROR: File format unsupported: {}", actual_file);
+        bail!("Unsupported update file format: {}", actual_file);
     }
     
     Ok(())
