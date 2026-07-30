@@ -930,7 +930,9 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
     setState(() { _isDownloading = true; });
     try {
       Directory tempDir = await getTemporaryDirectory();
-      String savePath = '${tempDir.path}\\remotik_update_$_latestVersion.exe';
+      
+      String savePath = '${tempDir.path}\\remotik_update_$_latestVersion.msi'; 
+      
       Dio dio = Dio();
       await dio.download(
         _downloadUrl, savePath,
@@ -939,13 +941,19 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
         },
       );
       setState(() { _isDownloading = false; });
-      Process.run(savePath, [], runInShell: true);
+      
+      // اجرای فایل نصبی به صورت کاملاً مستقل از برنامه (Detached)
+      await Process.start('msiexec.exe', ['/i', savePath, '/qb'], 
+          runInShell: true, 
+          mode: ProcessStartMode.detached); // این کلمه طلایی است!
+      
+      // حالا ریموتیک فوراً خودش را می‌بندد تا فایل‌ها برای نصب آزاد باشند
       exit(0);
     } catch (e) {
       setState(() { _isDownloading = false; _updateAvailable = false; });
     }
   }
-
+    
   @override
   Widget build(BuildContext context) {
     if (!_updateAvailable || _isCardClosed) return const SizedBox.shrink();
