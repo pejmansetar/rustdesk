@@ -926,13 +926,11 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
     } catch (e) {}
   }
 
-    Future<void> _startDownload() async {
+  Future<void> _startDownload() async {
     setState(() { _isDownloading = true; });
     try {
       Directory tempDir = await getTemporaryDirectory();
-      
-      // ۱. ذخیره فایل با نام exe
-      String savePath = '${tempDir.path}\\remotik_update.exe'; 
+      String savePath = '${tempDir.path}\\remotik_update_$_latestVersion.exe'; 
       
       Dio dio = Dio();
       await dio.download(
@@ -943,18 +941,17 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
       );
       setState(() { _isDownloading = false; });
       
-      // ۲. اجرای مستقل فایل با آرگومان جادویی آپدیتِ سایلنت
+      // اجرای مستقل فایل. 
+      // نیازی به exit(0) نیست، خود سیستم آپدیت ریموتیک را می‌بندد و دوباره باز می‌کند!
       await Process.start(savePath, ['--update'], 
           runInShell: true, 
           mode: ProcessStartMode.detached); 
       
-      // ۳. بسته شدن فوری ریموتیک
-      exit(0);
     } catch (e) {
       setState(() { _isDownloading = false; _updateAvailable = false; });
     }
   }
-    
+      
   @override
   Widget build(BuildContext context) {
     if (!_updateAvailable || _isCardClosed) return const SizedBox.shrink();
