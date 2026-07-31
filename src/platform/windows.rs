@@ -3611,52 +3611,23 @@ pub fn handle_custom_client_staging_dir_before_update(
 
 // Used for auto update and manual update in the main window.
 pub fn update_to(file: &str) -> ResultType<()> {
-    let mut actual_file = file.to_string();
-
-    // 1. اگر فایل با نام exe ذخیره شده بود، حتماً باید msi شود
     if file.ends_with(".exe") {
-        let msi_path = file.replace(".exe", ".msi");
-        let _ = std::fs::remove_file(&msi_path);
-        
-        let mut success = false;
-        
-        // حلقه تلاش مجدد (Retry Loop): 
-        // چون ویندوز فایل دانلودی را برای کسری از ثانیه قفل می‌کند، 
-        // ما 50 بار (هر بار 100 میلی‌ثانیه) تلاش می‌کنیم تا قفل باز شود و اسم فایل تغییر کند.
-        for _ in 0..50 {
-            if std::fs::rename(file, &msi_path).is_ok() {
-                success = true;
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(100)); // یک دهم ثانیه مکث
-        }
-
-        if success {
-            actual_file = msi_path;
+        let custom_client_staging_dir = get_custom_client_staging_dir();
+        if crate::is_custom_client() {
+            handle_custom_client_staging_dir_before_update(&custom_client_staging_dir)?;
         } else {
-            bail!("CRITICAL: Failed to rename the file. It is locked by Windows!");
+            allow_err!(remove_custom_client_staging_dir(&custom_client_staging_dir));
         }
-    }
-
-    // 2. حالا که مطمئنیم پسوند فایل ۱۰۰٪ msi شده، آن را به ویندوز می‌دهیم
-    if actual_file.ends_with(".msi") {
-        match std::process::Command::new("msiexec.exe")
-            .arg("/i")
-            .arg(&actual_file)
-            .arg("/qb") // نمایش نوار پیشرفت (Progress Bar)
-            .spawn()
-        {
-            Ok(_) => {
-                // ارسال موفق بود. حالا ریموتیک می‌تواند بسته شود.
-            }
-            Err(e) => {
-                bail!("Failed to start msiexec: {}", e);
-            }
+        if !run_uac(file, "--update")? {
+            bail!("Failed to run the update exe with UAC");
+        }
+    } else if file.ends_with(".msi") {
+        if let Err(e) = update_me_msi(file, false) {
+            bail!("Failed to run the update msi: {}", e);
         }
     } else {
-        bail!("Unsupported update file format: {}", actual_file);
+        bail!("Unsupported update file format: {}", file);
     }
-    
     Ok(())
 }
 // Don't launch tray app when running with `\qn`.

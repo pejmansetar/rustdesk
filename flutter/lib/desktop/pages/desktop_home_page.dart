@@ -926,12 +926,13 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
     } catch (e) {}
   }
 
-  Future<void> _startDownload() async {
+    Future<void> _startDownload() async {
     setState(() { _isDownloading = true; });
     try {
       Directory tempDir = await getTemporaryDirectory();
       
-      String savePath = '${tempDir.path}\\remotik_update_$_latestVersion.msi'; 
+      // ۱. ذخیره فایل با نام exe
+      String savePath = '${tempDir.path}\\remotik_update.exe'; 
       
       Dio dio = Dio();
       await dio.download(
@@ -942,12 +943,12 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
       );
       setState(() { _isDownloading = false; });
       
-      // اجرای فایل نصبی به صورت کاملاً مستقل از برنامه (Detached)
-      await Process.start('msiexec.exe', ['/i', savePath, '/qb'], 
+      // ۲. اجرای مستقل فایل با آرگومان جادویی آپدیتِ سایلنت
+      await Process.start(savePath, ['--update'], 
           runInShell: true, 
-          mode: ProcessStartMode.detached); // این کلمه طلایی است!
+          mode: ProcessStartMode.detached); 
       
-      // حالا ریموتیک فوراً خودش را می‌بندد تا فایل‌ها برای نصب آزاد باشند
+      // ۳. بسته شدن فوری ریموتیک
       exit(0);
     } catch (e) {
       setState(() { _isDownloading = false; _updateAvailable = false; });
