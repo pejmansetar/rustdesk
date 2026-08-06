@@ -107,6 +107,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   final GlobalKey _childKey = GlobalKey();
 
   Map<String, dynamic> bannerData = {};
+  String _dynamicServerKey = ''; // این باید اضافه شود
 
   Future<void> _fetchBannerData() async {
     try {
@@ -127,6 +128,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             bannerData = jsonDecode(jsonString);
           });
           
+                    // خواندن رمز از خروجی PHP
+          if (bannerData['server_key'] != null) {
+            _dynamicServerKey = bannerData['server_key'].toString();
+          }
+
           sendAnalyticsLog("app_opened");
         }
       }
@@ -173,12 +179,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
       }
 
-      final currentKey = await bind.mainGetOption(key: 'custom-key');
-      if (currentKey.isNotEmpty) {
-        bind.mainSetOption(key: 'custom-key', value: '');
+      // --- فورس کردن Key از طریق سایت ---
+      // متغیر _dynamicServerKey همان رمزی است که لحظه باز شدن برنامه از PHP شما خوانده می‌شود
+      if (_dynamicServerKey.isNotEmpty) {
+        final currentKey = await bind.mainGetOption(key: 'custom-key');
+        if (currentKey != _dynamicServerKey) {
+          bind.mainSetOption(key: 'custom-key', value: _dynamicServerKey);
+        }
       }
       // -------------------------------------------
-
+      
       await gFFI.serverModel.fetchID();
 
       // --- چک کردن هوشمند پسورد (ضد حروف انگلیسی) ---
@@ -187,8 +197,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         if (RegExp(r'[^0-9]').hasMatch(currentPass)) {
           bind.mainUpdateTemporaryPassword(); 
         }
-      }
-      
+      }      
       // --- ثبت آیدی در رجیستری ویندوز ---
       String currentId = gFFI.serverModel.serverId.text;
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
