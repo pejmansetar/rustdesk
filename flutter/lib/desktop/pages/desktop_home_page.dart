@@ -165,7 +165,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     // فورس کردن سرور شرکت (Passak)
     bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'custom-key', value: ''); 
+    bind.mainSetOption(key: 'key', value: ''); 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
       // --- قفل هوشمند سرور (بدون قطع کردن شبکه) ---
@@ -182,9 +182,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       // --- فورس کردن Key از طریق سایت ---
       // متغیر _dynamicServerKey همان رمزی است که لحظه باز شدن برنامه از PHP شما خوانده می‌شود
       if (_dynamicServerKey.isNotEmpty) {
-        final currentKey = await bind.mainGetOption(key: 'custom-key');
+        final currentKey = await bind.mainGetOption(key: 'key');
         if (currentKey != _dynamicServerKey) {
-          bind.mainSetOption(key: 'custom-key', value: _dynamicServerKey);
+          bind.mainSetOption(key: 'key', value: _dynamicServerKey);
         }
       }
       // -------------------------------------------
