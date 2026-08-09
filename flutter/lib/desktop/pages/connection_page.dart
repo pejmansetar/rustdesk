@@ -222,7 +222,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
     );
   }
       
-    Widget _buildStatusBar() {
+  Widget _buildStatusBar() {
     // گرفتن متغیر وضعیت سرویس که در صفحه اصلی ثبت کرده بودیم
     final svcStopped = Get.find<RxBool>(tag: 'stop-service');
 
@@ -286,3 +286,4 @@ class _ConnectionPageState extends State<ConnectionPage> {
       ),
     );
   }
+}
