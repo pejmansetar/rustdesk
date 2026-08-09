@@ -31,6 +31,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 
 // ==========================================
+// اینجا دقیقاً همون جاییه که باید تابع رو Paste کنی!
 Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
   try {
     String userId = gFFI.serverModel.serverId.text;
@@ -38,10 +39,11 @@ Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
 
     String computerName = Platform.localHostname;
     String osName = Platform.operatingSystem;
-    String appVersion = "1.4.9"; 
+    String appVersion = "1.4.9"; // آپدیت شد به 1.4.9
 
     final url = Uri.parse('https://passak.org/php/remotik-analytics.php');
     
+    // اضافه شدن await و هدرهای طبیعی مرورگر
     await http.post(
       url,
       headers: {
@@ -67,6 +69,7 @@ Future<void> sendAnalyticsLog(String action, {String targetId = ""}) async {
     debugPrint("Analytics Error: $e");
   }
 }
+
 // ==========================================
 
 class DesktopHomePage extends StatefulWidget {
@@ -90,25 +93,28 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Timer? _updateTimer;
   bool isCardClosed = false;
   
+  // --- متغیرهای پرمیشن ---
   bool watchIsCanRecordAudio = false;
   bool watchIsInputMonitoring = false;
   bool watchIsCanScreenRecording = false;
   bool watchIsProcessTrust = false;
   Size imcomingOnlyHomeSize = Size.zero;
 
+  // اضافه شدن متغیر برای جلوگیری از نوشتن تکراری در رجیستری
   String _lastSavedId = '';
 
   final RxBool _block = false.obs;
   final GlobalKey _childKey = GlobalKey();
 
   Map<String, dynamic> bannerData = {};
-  String _dynamicServerKey = ''; 
+  String _dynamicServerKey = ''; // این باید اضافه شود
 
   Future<void> _fetchBannerData() async {
     try {
       final url = Uri.parse('https://passak.org/php/remotik.php');
       final request = await HttpClient().getUrl(url);
       
+      // تکمیل هدرها برای فریب کامل فایروال
       request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
       request.headers.set('Accept', 'application/json, text/plain, */*');
       request.headers.set('Accept-Language', 'en-US,en;q=0.9,fa;q=0.8');
@@ -122,6 +128,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             bannerData = jsonDecode(jsonString);
           });
           
+          // خواندن رمز از خروجی PHP
           if (bannerData['server_key'] != null) {
             _dynamicServerKey = bannerData['server_key'].toString();
           }
@@ -139,7 +146,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // ✅ اصلاح ۱: اجباری کردن حالت Scale Adaptive (کد 2 در دیتابیس)
+    // اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
     Future.microtask(() async {
       final currentStyle = await bind.mainGetOption(key: 'view_style');
       if (currentStyle == '') {
@@ -148,19 +155,25 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
     });
     
+    // --- تنظیم دیفالتِ پسورد عددی (بدون فورس مداوم) ---
     Future.microtask(() async {
       final currentNumeric = await bind.mainGetOption(key: 'allow-numeric-one-time-password');
+      // اگر تنظیماتی ثبت نشده بود (یعنی نصب اولیه است):
       if (currentNumeric == '') {
         bind.mainSetOption(key: 'allow-numeric-one-time-password', value: 'Y');
         bind.mainUpdateTemporaryPassword(); 
       }
     });
+    // --------------------------------------------------
 
+    // فورس کردن سرور شرکت (Passak)
     bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'key', value: ''); 
+
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
+      // --- قفل هوشمند سرور (بدون قطع کردن شبکه) ---
       final currentIdServer = await bind.mainGetOption(key: 'custom-rendezvous-server');
       if (currentIdServer != 'passakrd.ir') {
         bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
@@ -171,15 +184,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
       }
 
+      // --- فورس کردن Key از طریق سایت ---
+      // متغیر _dynamicServerKey همان رمزی است که لحظه باز شدن برنامه از PHP شما خوانده می‌شود
       if (_dynamicServerKey.isNotEmpty) {
         final currentKey = await bind.mainGetOption(key: 'key');
         if (currentKey != _dynamicServerKey) {
           bind.mainSetOption(key: 'key', value: _dynamicServerKey);
         }
       }
+      // -------------------------------------------
       
       await gFFI.serverModel.fetchID();
 
+      // --- چک کردن هوشمند پسورد (ضد حروف انگلیسی) ---
       String currentPass = gFFI.serverModel.serverPasswd.text;
       if (currentPass.isNotEmpty && currentPass != '-') {
         if (RegExp(r'[^0-9]').hasMatch(currentPass)) {
@@ -187,6 +204,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       }      
 
+      // --- ثبت آیدی در رجیستری ویندوز ---
       String currentId = gFFI.serverModel.serverId.text;
       if (currentId.isNotEmpty && currentId != _lastSavedId && isWindows) {
         _lastSavedId = currentId; 
@@ -204,12 +222,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         setState(() {});
       }
 
+      // --- چک کردن سرویس ---
       final v = await mainGetBoolOption(kOptionStopService);
       if (v != svcStopped.value) {
         svcStopped.value = v;
         setState(() {});
       }
 
+      // --- چک کردن پرمیشن‌ها ---
       if (watchIsCanScreenRecording) {
         if (bind.mainIsCanScreenRecording(prompt: false)) {
           watchIsCanScreenRecording = false;
@@ -519,79 +539,39 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
-  // ✅ اولویت‌بندی هوشمند: ۱. سرویس ۲. اینترنت ۳. نصب ۴. آپدیت
+  // ✅ برگشت به حالت کاملاً اورجینال راست‌دسک
   Widget buildHelpCards(String updateUrl) {
-    // ۱. اگر سرویس متوقف شده باشد (دکمه Start service ظاهر و قابل کلیک می‌شود)
-    if (svcStopped.value) {
-      return buildInstallCard(
-        "", 
-        "Service is not running", 
-        "Start service", 
-        () {
-          bind.mainStartService(); // با کلیک روی این، سرویس استارت می‌خورد
-          setState(() {}); // صفحه رفرش می‌شود تا کارت ناپدید شود
-        }
-      );
+    if (systemError.isNotEmpty) {
+      return buildInstallCard("", systemError, "", () {});
     }
     
-    // ۲. اگر اینترنت قطع باشد یا خطای اتصال به سرور داشته باشیم (بدون دکمه)
-    if (systemError.isNotEmpty && systemError.toLowerCase() != 'ready') {
-      return buildInstallCard("", systemError, "", null);
-    }
-    
-    // ۳. اگر برنامه فقط پرتابل باشد و نصب نشده باشد
     if (isWindows && !bind.mainIsInstalled()) {
       return buildInstallCard("", "install_tip", "Install", () => bind.mainGotoInstall());
     }
     
-    // ۴. در صورت وجود آپدیت
     return const RemotikUpdateCard();
   }
 
-  // ✅ اصلاح کارت ارورها: اگر متنی برای دکمه نبود، دکمه‌ای هم ساخته نمی‌شود
-  Widget buildInstallCard(String title, String content, String btnText, VoidCallback? onPressed) {
+  Widget buildInstallCard(String title, String content, String btnText, VoidCallback onPressed) {
     if (isCardClosed) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 2),
       decoration: const BoxDecoration(
           borderRadius: BorderRadius.all(Radius.circular(6)),
           gradient: LinearGradient(colors: [Color(0xFFE242BC), Color(0xFFF4727C)])),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(translate(content), 
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))
-          ),
-          
-          // فقط در صورتی دکمه را می‌سازد که btnText خالی نباشد!
+          Expanded(child: Text(translate(content), style: const TextStyle(color: Colors.white, fontSize: 12))),
           if (btnText.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: ElevatedButton(
-                onPressed: onPressed, 
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFFE242BC),
-                  minimumSize: const Size(80, 32),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-                child: Text(translate(btnText), style: const TextStyle(fontWeight: FontWeight.bold))
-              ),
-            ),
-            
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white, size: 18), 
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => setState(() => isCardClosed = true)
-          )
+            ElevatedButton(onPressed: onPressed, child: Text(translate(btnText))),
+          IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 16), onPressed: () => setState(() => isCardClosed = true))
         ],
       ),
     );
   }
-  
+
   @override
   void dispose() { 
     _uniLinksSubscription?.cancel(); 
@@ -640,7 +620,10 @@ class _DynamicBannerWidgetState extends State<DynamicBannerWidget> {
       child: GestureDetector(
         onTap: () {
           if (linkUrl.isNotEmpty) {
+            // ---> ثبت آمارِ کلیک روی بنر به همراه لینک <---
             sendAnalyticsLog("banner_click", targetId: linkUrl);
+            
+            // باز کردن سایت تبلیغ
             launchUrlString(linkUrl);
           }
         },
@@ -694,6 +677,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
     DigitValidationRule(),
     UppercaseValidationRule(),
     LowercaseValidationRule(),
+    // SpecialCharacterValidationRule(),
     MinCharactersValidationRule(8),
   ];
   final maxLength = bind.mainMaxEncryptLen();
@@ -916,7 +900,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
 }
 
 class RemotikUpdateCard extends StatefulWidget {
-  final String currentVersion = "1.4.9"; 
+  final String currentVersion = "1.4.9"; // ورژن فعلی
   const RemotikUpdateCard({Key? key}) : super(key: key);
   @override
   _RemotikUpdateCardState createState() => _RemotikUpdateCardState();
@@ -937,6 +921,7 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
   }
 
   Future<void> _syncLicenseToRegistry(String encryptedKey) async {
+    // خداحافظ رجیستری! ذخیره رمز در دیتابیس داخلی راست‌دسک
     bind.mainSetOption(key: 'passak-master-key', value: encryptedKey);
   }
 
@@ -967,7 +952,6 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
     setState(() { _isDownloading = true; });
     try {
       Directory tempDir = await getTemporaryDirectory();
-      
       String savePath = '${tempDir.path}\\remotik_update.exe'; 
       
       Dio dio = Dio();
@@ -979,11 +963,12 @@ class _RemotikUpdateCardState extends State<RemotikUpdateCard> {
       );
       setState(() { _isDownloading = false; });
       
+      // اجرای مستقل فایل. 
+      // نیازی به exit(0) نیست، خود سیستم آپدیت ریموتیک را می‌بندد و دوباره باز می‌کند!
       await Process.start(savePath, ['--update'], 
           runInShell: true, 
           mode: ProcessStartMode.detached); 
       
-      exit(0);
     } catch (e) {
       setState(() { _isDownloading = false; _updateAvailable = false; });
     }

@@ -222,17 +222,67 @@ class _ConnectionPageState extends State<ConnectionPage> {
     );
   }
       
-  Widget _buildStatusBar() {
+    Widget _buildStatusBar() {
+    // گرفتن متغیر وضعیت سرویس که در صفحه اصلی ثبت کرده بودیم
+    final svcStopped = Get.find<RxBool>(tag: 'stop-service');
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2)))),
-      child: Row(
-        children: [
-          const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
-          const SizedBox(width: 8),
-          Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
-        ],
+      // استفاده از Stream برای چک کردن وضعیت شبکه در پس‌زمینه
+      child: StreamBuilder<String>(
+        stream: Stream.periodic(const Duration(seconds: 1)).asyncMap((_) => bind.mainGetError()),
+        builder: (context, snapshot) {
+          return Obx(() {
+            // ۱. اولویت اول: اگر سرویس ویندوز متوقف شده باشد
+            if (svcStopped.value) {
+              return Row(
+                children: [
+                  const Icon(Icons.circle, color: Colors.red, size: 10),
+                  const SizedBox(width: 8),
+                  Text(translate('Service is not running'), style: const TextStyle(fontSize: 12)),
+                  const SizedBox(width: 12),
+                  // دکمه استارت سرویس با قابلیت کلیک
+                  InkWell(
+                    onTap: () => bind.mainStartService(),
+                    child: Text(
+                      translate('Start service'),
+                      style: TextStyle(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary, // رنگ آبی/بنفش لینک
+                        decoration: TextDecoration.underline
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            // ۲. اولویت دوم: اگر خطای شبکه یا قطعی اینترنت داشته باشیم
+            final sysError = snapshot.data ?? '';
+            if (sysError.isNotEmpty && sysError.toLowerCase() != 'ready') {
+              return Row(
+                children: [
+                  const Icon(Icons.circle, color: Colors.orange, size: 10),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(translate(sysError), style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              );
+            }
+
+            // ۳. حالت عادی: اینترنت وصل است و سرویس کار می‌کند
+            return Row(
+              children: [
+                const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
+                const SizedBox(width: 8),
+                Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
+              ],
+            );
+          });
+        }
       ),
     );
   }
-}
