@@ -9,6 +9,7 @@ import '../../common.dart';
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
+import 'package:flutter_hbb/plugin/ui_manager.dart'; // ✅ این ایمپورت اضافه شد تا ارور bind رفع شود
 
 class ConnectionPage extends StatefulWidget {
   final Widget? topContent;
