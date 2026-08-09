@@ -311,25 +311,38 @@ bool _isCmReadyToShow = false;
 showCmWindow({bool isStartup = false}) async {
   if (isStartup) {
     WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
-        size: kConnectionManagerWindowSizeClosedChat, alwaysOnTop: true);
+        size: kConnectionManagerWindowSizeClosedChat, alwaysOnTop: true, center: true); // center اضافه شد
     await windowManager.waitUntilReadyToShow(windowOptions, null);
     bind.mainHideDock();
+    
+    // ⭐️ فورس کردنِ همیشه روی صفحه بودن و وسط‌چین بودن
+    await windowManager.setAlwaysOnTop(true);
+    await windowManager.center();
+
     await Future.wait([
       windowManager.show(),
       windowManager.focus(),
       windowManager.setOpacity(1)
     ]);
-    // ensure initial window size to be changed
+    
+    // ⭐️ تغییر topRight به center
     await windowManager.setSizeAlignment(
-        kConnectionManagerWindowSizeClosedChat, Alignment.topRight);
+        kConnectionManagerWindowSizeClosedChat, Alignment.center);
     _isCmReadyToShow = true;
   } else if (_isCmReadyToShow) {
     if (await windowManager.getOpacity() != 1) {
       await windowManager.setOpacity(1);
+      
+      // ⭐️ فورس مجدد وقتی از حالت مخفی درمیاد
+      await windowManager.setAlwaysOnTop(true);
       await windowManager.focus();
       await windowManager.minimize(); //needed
+      
+      // ⭐️ تغییر topRight به center
       await windowManager.setSizeAlignment(
-          kConnectionManagerWindowSizeClosedChat, Alignment.topRight);
+          kConnectionManagerWindowSizeClosedChat, Alignment.center);
+      await windowManager.center();
+      
       windowOnTop(null);
     }
   }
@@ -415,7 +428,8 @@ WindowOptions getHiddenTitleBarWindowOptions(
   }
   return WindowOptions(
     size: size,
-    minimumSize: const Size(900, 630), // <--- این خط طلایی رو اضافه کردیم
+    // ⭐️ شرط هوشمند: سایز ۹۰۰ فقط برای پنجره اصلی اعمال می‌شود، نه CM
+    minimumSize: isMainWindow ? const Size(900, 630) : null, 
     center: center,
     backgroundColor: (isMacOS && isMainWindow) ? null : Colors.transparent,
     skipTaskbar: false,
