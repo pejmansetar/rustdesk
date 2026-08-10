@@ -236,10 +236,12 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   Text(translate('Service is not running'), style: const TextStyle(fontSize: 12)),
                   const SizedBox(width: 12),
                   InkWell(
-                    onTap: () => bind.mainStartService(),
-                    child: Text(
-                      translate('Start service'),
-                      style: TextStyle(
+                    onTap: () async {
+                      await bind.mainSetOption(key: kOptionStopService, value: '');
+                      bind.mainStartService();
+                      },
+                      child: Text(
+                      translate('Start service'),                      style: TextStyle(
                         fontSize: 12, 
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,
