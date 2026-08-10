@@ -5,9 +5,8 @@ import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
-
-// ✅ تغییر طلایی: ایمپورت صحیح و مستقیم common برای شناخته شدن متغیر bind
-import 'package:flutter_hbb/common.dart'; 
+import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/models/platform_model.dart'; // ← این خط اضافه شد
 
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
