@@ -284,3 +284,4 @@ class _ConnectionPageState extends State<ConnectionPage> {
       }),
     );
   }
+  }
