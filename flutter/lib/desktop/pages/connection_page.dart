@@ -5,11 +5,13 @@ import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
-import '../../common.dart';
+
+// ✅ تغییر طلایی: ایمپورت صحیح و مستقیم common برای شناخته شدن متغیر bind
+import 'package:flutter_hbb/common.dart'; 
+
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
-import 'package:flutter_hbb/plugin/ui_manager.dart'; // ✅ این ایمپورت اضافه شد تا ارور bind رفع شود
 
 class ConnectionPage extends StatefulWidget {
   final Widget? topContent;
@@ -31,7 +33,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
     Get.put(_idController);
   }
 
-  // تابع کمکی برای گرفتن آیدی تمیز (بدون فاصله)
   String get _cleanId => _idEditingController.text.trim().replaceAll(' ', '');
 
   @override
@@ -42,10 +43,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
         children: [
           _buildTopConnectBar(context),
           
-          // =========================================================
-          // متن ظریف و کوچیک دقیقاً تو همون گپ (بدون هل دادن کارت به پایین)
           Padding(
-            padding: const EdgeInsets.only(top: 8.0), // حداقل فاصله فقط از بالا
+            padding: const EdgeInsets.only(top: 8.0),
             child: Center(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -55,16 +54,16 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       TextSpan(
                         text: 'Remotik ',
                         style: TextStyle(
-                          color: Color(0xFF0078D7), // آبی
-                          fontSize: 15,             // سایز ریز و استاندارد
+                          color: Color(0xFF0078D7),
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       TextSpan(
                         text: 'remote desktop',
                         style: TextStyle(
-                          color: Color(0xFF888888), // خاکستری ملایم
-                          fontSize: 11,             // سایز خیلی کوچیک‌تر
+                          color: Color(0xFF888888),
+                          fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -74,17 +73,17 @@ class _ConnectionPageState extends State<ConnectionPage> {
               ),
             ),
           ),
-          // =========================================================
 
           if (widget.topContent != null) widget.topContent!,
           const Divider(height: 1),
-          // بخش لیست سیستم‌ها 
+          
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: const PeerTabPage(),
             ),
           ),
+          
           if (widget.bottomContent != null) widget.bottomContent!,
           _buildStatusBar(),
         ],
@@ -97,7 +96,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          // دکمه چرخ‌دنده
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey, size: 26), 
             splashRadius: 22,
@@ -106,7 +104,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 5),
           
-          // فیلد ورود آیدی (جایگزین Autocomplete خراب)
           Expanded(
             child: TextField(
               controller: _idEditingController,
@@ -129,7 +126,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 15),
             
-          // دکمه Connect و منوی کشویی بهینه‌شده
           Container(
             height: 44, 
             decoration: BoxDecoration(
@@ -224,18 +220,15 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
       
   Widget _buildStatusBar() {
-    // گرفتن متغیر وضعیت سرویس که در صفحه اصلی ثبت کرده بودیم
     final svcStopped = Get.find<RxBool>(tag: 'stop-service');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2)))),
-      // استفاده از Stream برای چک کردن وضعیت شبکه در پس‌زمینه
       child: StreamBuilder<String>(
         stream: Stream.periodic(const Duration(seconds: 1)).asyncMap((_) => bind.mainGetError()),
         builder: (context, snapshot) {
           return Obx(() {
-            // ۱. اولویت اول: اگر سرویس ویندوز متوقف شده باشد
             if (svcStopped.value) {
               return Row(
                 children: [
@@ -243,7 +236,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                   const SizedBox(width: 8),
                   Text(translate('Service is not running'), style: const TextStyle(fontSize: 12)),
                   const SizedBox(width: 12),
-                  // دکمه استارت سرویس با قابلیت کلیک
                   InkWell(
                     onTap: () => bind.mainStartService(),
                     child: Text(
@@ -251,7 +243,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       style: TextStyle(
                         fontSize: 12, 
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary, // رنگ آبی/بنفش لینک
+                        color: Theme.of(context).colorScheme.primary,
                         decoration: TextDecoration.underline
                       ),
                     ),
@@ -260,7 +252,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
               );
             }
 
-            // ۲. اولویت دوم: اگر خطای شبکه یا قطعی اینترنت داشته باشیم
             final sysError = snapshot.data ?? '';
             if (sysError.isNotEmpty && sysError.toLowerCase() != 'ready') {
               return Row(
@@ -274,7 +265,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
               );
             }
 
-            // ۳. حالت عادی: اینترنت وصل است و سرویس کار می‌کند
             return Row(
               children: [
                 const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
