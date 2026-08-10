@@ -223,59 +223,64 @@ class _ConnectionPageState extends State<ConnectionPage> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2)))),
-      child: StreamBuilder<String>(
-        stream: Stream.periodic(const Duration(seconds: 1)).asyncMap((_) => bind.mainGetError()),
-        builder: (context, snapshot) {
-          return Obx(() {
-            if (svcStopped.value) {
-              return Row(
-                children: [
-                  const Icon(Icons.circle, color: Colors.red, size: 10),
-                  const SizedBox(width: 8),
-                  Text(translate('Service is not running'), style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: () async {
-                      await bind.mainSetOption(key: kOptionStopService, value: '');
-                      bind.mainStartService();
-                      },
-                      child: Text(
-                      translate('Start service'),                      style: TextStyle(
-                        fontSize: 12, 
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            final sysError = snapshot.data ?? '';
-            if (sysError.isNotEmpty && sysError.toLowerCase() != 'ready') {
-              return Row(
-                children: [
-                  const Icon(Icons.circle, color: Colors.orange, size: 10),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(translate(sysError), style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis),
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              children: [
-                const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
-                const SizedBox(width: 8),
-                Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
-              ],
-            );
-          });
-        }
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
+      child: Obx(() {
+        // ۱. سرویس متوقفه
+        if (svcStopped.value) {
+          return Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.red, size: 10),
+              const SizedBox(width: 8),
+              Text(
+                translate('Service is not running'),
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(width: 12),
+              InkWell(
+                onTap: () async {
+                  await bind.mainSetOption(key: kOptionStopService, value: '');
+                  bind.mainStartService();
+                },
+                child: Text(
+                  translate('Start service'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        // ۲. چک وضعیت اتصال به شبکه
+        final status = stateGlobal.svcStatus.value;
+
+        if (status == SvcStatus.notReady || status == SvcStatus.connecting) {
+          return Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.orange, size: 10),
+              const SizedBox(width: 8),
+              Text(
+                translate('Connecting to Remotik network...'),
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+          );
+        }
+
+        // ۳. حالت عادی - آماده
+        return Row(
+          children: [
+            const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
+            const SizedBox(width: 8),
+            Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
+          ],
+        );
+      }),
     );
   }
-}

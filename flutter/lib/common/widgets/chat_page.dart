@@ -12,6 +12,20 @@ enum ChatPageType {
   desktopCM,
 }
 
+// =========================================================================
+// ✅ تابع تشخیص جهت متن (RTL یا LTR)
+// اگر متن شامل کاراکترهای فارسی/عربی/عبری/اردو باشد → RTL برمی‌گرداند
+// در غیر این صورت → LTR (برای انگلیسی و بقیه زبان‌ها)
+// =========================================================================
+bool _isRTL(String text) {
+  if (text.isEmpty) return false;
+  // محدوده یونیکد کاراکترهای زبان‌های راست به چپ
+  final rtlRegex = RegExp(
+      r'[\u0591-\u07FF\u200F\u202B\u202E\uFB1D-\uFDFD\uFE70-\uFEFC]');
+  return rtlRegex.hasMatch(text);
+}
+// =========================================================================
+
 class ChatPage extends StatelessWidget implements PageShape {
   late final ChatModel chatModel;
   final ChatPageType? type;
@@ -33,7 +47,7 @@ class ChatPage extends StatelessWidget implements PageShape {
         icon: unreadTopRightBuilder(gFFI.chatModel.mobileUnreadSum,
             icon: Icon(Icons.group)),
         itemBuilder: (context) {
-          // only mobile need [appBarActions], just bind gFFI.chatModel
+          // فقط موبایل به [appBarActions] نیاز دارد، پس مستقیم به gFFI.chatModel وصل می‌شویم
           final chatModel = gFFI.chatModel;
           return chatModel.messages.entries.map((entry) {
             final key = entry.key;
@@ -82,6 +96,7 @@ class ChatPage extends StatelessWidget implements PageShape {
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Consumer<ChatModel>(
           builder: (context, chatModel, child) {
+            // تشخیص اینکه چت باید فقط خواندنی باشد یا نه
             final readOnly = type == ChatPageType.mobileMain &&
                     (chatModel.currentKey.connId == ChatModel.clientModeID ||
                         gFFI.serverModel.clients.every((e) =>
@@ -103,12 +118,18 @@ class ChatPage extends StatelessWidget implements PageShape {
                             .messages[chatModel.currentKey]?.chatMessages ??
                         [],
                     readOnly: readOnly,
+                    // =========================================================
+                    // بخش تنظیمات فیلد ورودی (جایی که کاربر تایپ می‌کند)
+                    // =========================================================
                     inputOptions: InputOptions(
                       focusNode: chatModel.inputNode,
                       textController: chatModel.textController,
                       inputTextStyle: TextStyle(
                           fontSize: 14,
                           color: Theme.of(context).textTheme.titleLarge?.color),
+                      // ✅ پیش‌فرض جهت تایپ = راست به چپ (مخصوص فارسی)
+                      // چون کاربران ما بیشتر فارسی می‌نویسند
+                      inputTextDirection: TextDirection.rtl,
                       inputDecoration: InputDecoration(
                         isDense: true,
                         hintText: translate('Write a message'),
@@ -130,6 +151,9 @@ class ChatPage extends StatelessWidget implements PageShape {
                         icon: Icons.send_rounded,
                       ),
                     ),
+                    // =========================================================
+                    // بخش تنظیمات نمایش پیام‌ها (حباب‌های چت)
+                    // =========================================================
                     messageOptions: MessageOptions(
                       showOtherUsersAvatar: false,
                       showOtherUsersName: false,
@@ -137,13 +161,28 @@ class ChatPage extends StatelessWidget implements PageShape {
                       maxWidth: constraints.maxWidth * 0.7,
                       messageTextBuilder: (message, _, __) {
                         final isOwnMessage = message.user.id.isBlank!;
+                        // ✅ تشخیص خودکار جهت متن هر پیام
+                        // اگر پیام فارسی/عربی باشد → RTL
+                        // اگر انگلیسی باشد → LTR
+                        final isRtl = _isRTL(message.text);
                         return Column(
                           crossAxisAlignment: isOwnMessage
                               ? CrossAxisAlignment.end
                               : CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(message.text,
-                                style: TextStyle(color: Colors.white)),
+                            // ✅ Directionality جهت متن را برای Text تعیین می‌کند
+                            Directionality(
+                              textDirection: isRtl
+                                  ? TextDirection.rtl
+                                  : TextDirection.ltr,
+                              child: Text(
+                                message.text,
+                                style: TextStyle(color: Colors.white),
+                                textAlign:
+                                    isRtl ? TextAlign.right : TextAlign.left,
+                              ),
+                            ),
+                            // ساعت ارسال پیام (زیر متن پیام)
                             Text(
                               "${message.createdAt.hour}:${message.createdAt.minute.toString().padLeft(2, '0')}",
                               style: TextStyle(
@@ -154,6 +193,7 @@ class ChatPage extends StatelessWidget implements PageShape {
                           ],
                         );
                       },
+                      // استایل و رنگ حباب پیام
                       messageDecorationBuilder:
                           (message, previousMessage, nextMessage) {
                         final isOwnMessage = message.user.id.isBlank!;
