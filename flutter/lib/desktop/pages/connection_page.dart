@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert'; // ✅ اضافه شد برای jsonDecode
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -24,12 +25,50 @@ class ConnectionPage extends StatefulWidget {
 class _ConnectionPageState extends State<ConnectionPage> {
   final _idController = IDTextEditingController();
   final _idEditingController = TextEditingController();
+  
+  // ✅ تایمر برای چک وضعیت اتصال به سرور (روش خود RustDesk)
+  Timer? _statusTimer;
 
   @override
   void initState() {
     super.initState();
     Get.put(_idEditingController);
     Get.put(_idController);
+    
+    // ✅ شروع چک وضعیت اتصال - هر ۱ ثانیه از هسته Rust می‌خواند
+    _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _updateConnectStatus();
+    });
+    // چک اولیه بلافاصله
+    _updateConnectStatus();
+  }
+
+  // ✅ آپدیت وضعیت اتصال از هسته Rust
+  // این تابع دقیقاً روش خود RustDesk است
+  Future<void> _updateConnectStatus() async {
+    try {
+      final status = jsonDecode(await bind.mainGetConnectStatus())
+          as Map<String, dynamic>;
+      final statusNum = status['status_num'] as int;
+      if (statusNum == 0) {
+        // در حال اتصال به سرور
+        stateGlobal.svcStatus.value = SvcStatus.connecting;
+      } else if (statusNum == -1) {
+        // متصل نیست (خطا)
+        stateGlobal.svcStatus.value = SvcStatus.notReady;
+      } else if (statusNum == 1) {
+        // آماده و متصل
+        stateGlobal.svcStatus.value = SvcStatus.ready;
+      } else {
+        stateGlobal.svcStatus.value = SvcStatus.notReady;
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    super.dispose();
   }
 
   String get _cleanId => _idEditingController.text.trim().replaceAll(' ', '');
@@ -218,6 +257,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
     );
   }
       
+  // ✅ نوار وضعیت پایین - دقیقاً مثل RustDesk اورجینال
   Widget _buildStatusBar() {
     final svcStopped = Get.find<RxBool>(tag: 'stop-service');
 
@@ -226,74 +266,84 @@ class _ConnectionPageState extends State<ConnectionPage> {
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
       ),
-      // ✅ استریم که هر ۱ ثانیه وضعیت خطا را از هسته Rust می‌خواند
-      child: StreamBuilder<String>(
-        stream: Stream.periodic(const Duration(seconds: 1))
-            .asyncMap((_) => bind.mainGetError()),
-        builder: (context, snapshot) {
-          return Obx(() {
-            // ۱. سرویس متوقفه
-            if (svcStopped.value) {
-              return Row(
-                children: [
-                  const Icon(Icons.circle, color: Colors.red, size: 10),
-                  const SizedBox(width: 8),
-                  Text(
-                    translate('Service is not running'),
-                    style: const TextStyle(fontSize: 12),
+      child: Obx(() {
+        // ۱. سرویس متوقفه
+        if (svcStopped.value) {
+          return Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.red, size: 10),
+              const SizedBox(width: 8),
+              Text(
+                translate('Service is not running'),
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(width: 12),
+              InkWell(
+                onTap: () async {
+                  await bind.mainSetOption(
+                      key: kOptionStopService, value: '');
+                  bind.mainStartService();
+                },
+                child: Text(
+                  translate('Start service'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
                   ),
-                  const SizedBox(width: 12),
-                  InkWell(
-                    onTap: () async {
-                      await bind.mainSetOption(
-                          key: kOptionStopService, value: '');
-                      bind.mainStartService();
-                    },
-                    child: Text(
-                      translate('Start service'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
+                ),
+              ),
+            ],
+          );
+        }
 
-            // ۲. گرفتن خطای فعلی از هسته
-            final sysError = snapshot.data ?? '';
+        // ۲. چک وضعیت اتصال به شبکه (روش دقیق RustDesk)
+        final status = stateGlobal.svcStatus.value;
 
-            // اگر خطا وجود دارد = هنوز به شبکه وصل نشده
-            if (sysError.isNotEmpty) {
-              return Row(
-                children: [
-                  const Icon(Icons.circle, color: Colors.orange, size: 10),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      translate('Connecting to Remotik network...'),
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              );
-            }
+        // در حال اتصال به سرور
+        if (status == SvcStatus.connecting) {
+          return Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.orange, size: 10),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  translate('Connecting to Remotik network...'),
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
+        }
 
-            // ۳. حالت عادی - آماده و متصل
-            return Row(
-              children: [
-                const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
-                const SizedBox(width: 8),
-                Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
-              ],
-            );
-          });
-        },
-      ),
+        // متصل نیست (خطا در ارتباط)
+        if (status == SvcStatus.notReady) {
+          return Row(
+            children: [
+              const Icon(Icons.circle, color: Colors.red, size: 10),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  translate('not_ready_status'),
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          );
+        }
+
+        // ۳. حالت عادی - آماده و متصل
+        return Row(
+          children: [
+            const Icon(Icons.circle, color: Color(0xFF32BEA6), size: 10),
+            const SizedBox(width: 8),
+            Text(translate('Ready'), style: const TextStyle(fontSize: 12)),
+          ],
+        );
+      }),
     );
   }
 }
