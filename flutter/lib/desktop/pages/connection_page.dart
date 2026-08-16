@@ -11,6 +11,7 @@ import 'package:flutter_hbb/models/platform_model.dart'; // ← این خط اض
 
 import '../../common/formatter/id_formatter.dart';
 import '../../common/widgets/peer_tab_page.dart';
+import '../../common/widgets/autocomplete.dart'; // ✅ اضافه شد برای AutocompletePeerTile
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 
 class ConnectionPage extends StatefulWidget {
@@ -26,6 +27,12 @@ class _ConnectionPageState extends State<ConnectionPage> {
   final _idController = IDTextEditingController();
   final _idEditingController = TextEditingController();
   
+  // ✅ فوکوس و لودر برای اتوکامپلیت آیدی‌های قبلی
+  final FocusNode _idFocusNode = FocusNode();
+  final RxBool _idInputFocused = false.obs;
+  final AllPeersLoader _allPeersLoader = AllPeersLoader();
+  Iterable<Peer> _autocompleteOpts = [];
+  
   // ✅ تایمر برای چک وضعیت اتصال به سرور (روش خود RustDesk)
   Timer? _statusTimer;
 
@@ -35,12 +42,42 @@ class _ConnectionPageState extends State<ConnectionPage> {
     Get.put(_idEditingController);
     Get.put(_idController);
     
+    // ✅ راه‌اندازی لودر peerها برای suggest
+    _allPeersLoader.init(setState);
+    _idFocusNode.addListener(_onFocusChanged);
+    
+    // ✅ بارگذاری آخرین آیدی وارد شده
+    if (_idController.text.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final lastRemoteId = await bind.mainGetLastRemoteId();
+        if (lastRemoteId != _idController.id) {
+          setState(() {
+            _idController.id = lastRemoteId;
+          });
+        }
+      });
+    }
+    
     // ✅ شروع چک وضعیت اتصال - هر ۱ ثانیه از هسته Rust می‌خواند
     _statusTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       await _updateConnectStatus();
     });
     // چک اولیه بلافاصله
     _updateConnectStatus();
+  }
+
+  // ✅ وقتی فیلد فوکوس گرفت، لیست peerها را لود کن
+  void _onFocusChanged() {
+    _idInputFocused.value = _idFocusNode.hasFocus;
+    if (_idFocusNode.hasFocus) {
+      if (_allPeersLoader.needLoad) {
+        _allPeersLoader.getAllPeers();
+      }
+      // انتخاب کل متن (مثل کروم)
+      final textLength = _idEditingController.value.text.length;
+      _idEditingController.selection =
+          TextSelection(baseOffset: 0, extentOffset: textLength);
+    }
   }
 
   // ✅ آپدیت وضعیت اتصال از هسته Rust
@@ -68,6 +105,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
   @override
   void dispose() {
     _statusTimer?.cancel();
+    // ✅ پاک کردن منابع اتوکامپلیت
+    _allPeersLoader.clear();
+    _idFocusNode.removeListener(_onFocusChanged);
+    _idFocusNode.dispose();
     super.dispose();
   }
 
@@ -142,25 +183,154 @@ class _ConnectionPageState extends State<ConnectionPage> {
           ),
           const SizedBox(width: 5),
           
+          // ✅ فیلد ورود آیدی با قابلیت اتوکامپلیت (suggest آیدی‌های قبلی)
           Expanded(
-            child: TextField(
-              controller: _idEditingController,
-              inputFormatters: [IDTextInputFormatter()], 
-              style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
-              decoration: InputDecoration(
-                hintText: translate('Enter remote ID'),
-                fillColor: Colors.grey.withOpacity(0.1),
-                filled: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
-              ),
-              onChanged: (v) => _idController.id = v,
-              onSubmitted: (_) {
-                if (_cleanId.isNotEmpty) {
-                  connect(context, _cleanId);
+            child: RawAutocomplete<Peer>(
+              focusNode: _idFocusNode,
+              textEditingController: _idEditingController,
+              // ساخت لیست پیشنهادات بر اساس متنی که کاربر تایپ کرده
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text == '') {
+                  _autocompleteOpts = const Iterable<Peer>.empty();
+                } else if (_allPeersLoader.peers.isEmpty &&
+                    !_allPeersLoader.isPeersLoaded) {
+                  // در حال بارگذاری - نمایش loading
+                  Peer emptyPeer = Peer(
+                    id: '',
+                    username: '',
+                    hostname: '',
+                    alias: '',
+                    platform: '',
+                    tags: [],
+                    hash: '',
+                    password: '',
+                    forceAlwaysRelay: false,
+                    rdpPort: '',
+                    rdpUsername: '',
+                    loginName: '',
+                    device_group_name: '',
+                    note: '',
+                  );
+                  _autocompleteOpts = [emptyPeer];
+                } else {
+                  String textWithoutSpaces =
+                      textEditingValue.text.replaceAll(" ", "");
+                  if (int.tryParse(textWithoutSpaces) != null) {
+                    textEditingValue = TextEditingValue(
+                      text: textWithoutSpaces,
+                      selection: textEditingValue.selection,
+                    );
+                  }
+                  String textToFind = textEditingValue.text.toLowerCase();
+                  // فیلتر بر اساس id، username، hostname یا alias
+                  _autocompleteOpts = _allPeersLoader.peers
+                      .where((peer) =>
+                          peer.id.toLowerCase().contains(textToFind) ||
+                          peer.username.toLowerCase().contains(textToFind) ||
+                          peer.hostname.toLowerCase().contains(textToFind) ||
+                          peer.alias.toLowerCase().contains(textToFind))
+                      .toList();
                 }
+                return _autocompleteOpts;
               },
-            ).workaroundFreezeLinuxMint(),
+              // ساخت خودِ فیلد ورودی (همون استایل قبلی خودت)
+              fieldViewBuilder: (
+                BuildContext context,
+                TextEditingController fieldTextEditingController,
+                FocusNode fieldFocusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                return TextField(
+                  controller: fieldTextEditingController,
+                  focusNode: fieldFocusNode,
+                  inputFormatters: [IDTextInputFormatter()], 
+                  style: const TextStyle(fontSize: 16, letterSpacing: 1.2), 
+                  decoration: InputDecoration(
+                    hintText: translate('Enter remote ID'),
+                    fillColor: Colors.grey.withOpacity(0.1),
+                    filled: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+                  ),
+                  onChanged: (v) => _idController.id = v,
+                  onSubmitted: (_) {
+                    if (_cleanId.isNotEmpty) {
+                      connect(context, _cleanId);
+                    }
+                  },
+                ).workaroundFreezeLinuxMint();
+              },
+              // وقتی کاربر یک peer را انتخاب کرد
+              onSelected: (Peer option) {
+                setState(() {
+                  _idController.id = option.id;
+                  _idEditingController.text = option.id;
+                  FocusScope.of(context).unfocus();
+                });
+              },
+              // ساخت لیست dropdown پیشنهادات
+              optionsViewBuilder: (BuildContext context,
+                  AutocompleteOnSelected<Peer> onSelected,
+                  Iterable<Peer> options) {
+                options = _autocompleteOpts;
+                double maxHeight = options.length * 50;
+                if (options.length == 1) {
+                  maxHeight = 52;
+                } else if (options.length == 3) {
+                  maxHeight = 146;
+                } else if (options.length == 4) {
+                  maxHeight = 193;
+                }
+                maxHeight = maxHeight.clamp(0, 200);
+
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 5,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: Material(
+                        elevation: 4,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: maxHeight,
+                            maxWidth: 400,
+                          ),
+                          child: _allPeersLoader.peers.isEmpty &&
+                                  !_allPeersLoader.isPeersLoaded
+                              ? Container(
+                                  height: 80,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 5),
+                                  child: ListView(
+                                    children: options
+                                        .map((peer) => AutocompletePeerTile(
+                                            onSelect: () => onSelected(peer),
+                                            peer: peer))
+                                        .toList(),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
           const SizedBox(width: 15),
             

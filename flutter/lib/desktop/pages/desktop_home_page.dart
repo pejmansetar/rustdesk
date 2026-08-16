@@ -146,15 +146,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
+    // ✅ اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
+    // فقط یک بار در نصب اولیه اجرا می‌شود (با یک flag)
     Future.microtask(() async {
-      final currentStyle = await bind.mainGetOption(key: 'view_style');
-      if (currentStyle == '') {
-        bind.mainSetOption(key: 'view_style', value: '2');
-        bind.mainSetOption(key: 'custom-view_style', value: '2');
+      final alreadySet = await bind.mainGetLocalOption(key: 'remotik-default-view-set');
+      if (alreadySet != 'Y') {
+        // مقدار درست برای Scale Adaptive
+        await bind.mainSetOption(key: 'view_style', value: 'adaptive');
+        await bind.mainSetOption(key: 'custom-view_style', value: 'adaptive');
+        // ثبت flag تا دفعه بعد تکرار نشود
+        await bind.mainSetLocalOption(key: 'remotik-default-view-set', value: 'Y');
       }
     });
-    
+
     // --- تنظیم دیفالتِ پسورد عددی (بدون فورس مداوم) ---
     Future.microtask(() async {
       final currentNumeric = await bind.mainGetOption(key: 'allow-numeric-one-time-password');
@@ -169,7 +173,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     // فورس کردن سرور شرکت (Passak)
     bind.mainSetOption(key: 'custom-rendezvous-server', value: 'passakrd.ir');
     bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
-    bind.mainSetOption(key: 'key', value: ''); 
+    bind.mainSetOption(key: 'key', value: '');
+
+    // ✅ فورس کردن API Server
+    bind.mainSetOption(key: 'api-server', value: 'https://passakrd.ir');
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
@@ -182,6 +189,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final currentRelay = await bind.mainGetOption(key: 'custom-relay-server');
       if (currentRelay != 'passakrd.ir') {
         bind.mainSetOption(key: 'custom-relay-server', value: 'passakrd.ir');
+      }
+      // ✅ قفل هوشمند API Server
+      final currentApiServer = await bind.mainGetOption(key: 'api-server');
+      if (currentApiServer != 'https://passakrd.ir') {
+      bind.mainSetOption(key: 'api-server', value: 'https://passakrd.ir');
       }
 
       // --- فورس کردن Key از طریق سایت ---
