@@ -146,15 +146,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     super.initState();
     _fetchBannerData();
     
-    // ✅ اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
+    // ✅ اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض همه sessionها
     // فقط یک بار در نصب اولیه اجرا می‌شود
     Future.microtask(() async {
-      // چک flag که آیا قبلاً ست شده یا نه
       final alreadySet = await bind.mainGetLocalOption(key: 'remotik-view-set');
       if (alreadySet != 'Y') {
-        // ست کردن روی adaptive (مقدار درست RustDesk)
-        await bind.mainSetOption(key: 'view_style', value: 'adaptive');
-        await bind.mainSetOption(key: 'custom-view_style', value: 'adaptive');
+        // ست کردن پیش‌فرض کاربر - این مقدار برای همه sessionهای بعدی استفاده می‌شود
+        await bind.mainSetUserDefaultOption(
+            key: kOptionViewStyle, value: kRemoteViewStyleAdaptive);
         // ثبت flag تا دفعه بعد تکرار نشه
         await bind.mainSetLocalOption(key: 'remotik-view-set', value: 'Y');
       }
