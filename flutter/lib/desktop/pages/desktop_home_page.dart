@@ -176,7 +176,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     bind.mainSetOption(key: 'key', value: '');
 
     // ✅ فورس کردن API Server
-    bind.mainSetOption(key: 'api-server', value: 'https://passakrd.ir');
+    bind.mainSetOption(key: 'api-server', value: 'passakrd.ir');
 
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       
@@ -192,7 +192,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
       // ✅ قفل هوشمند API Server
       final currentApiServer = await bind.mainGetOption(key: 'api-server');
-      if (currentApiServer != 'https://passakrd.ir') {
+      if (currentApiServer != 'passakrd.ir') {
       bind.mainSetOption(key: 'api-server', value: 'https://passakrd.ir');
       }
 
