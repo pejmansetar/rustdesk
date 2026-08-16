@@ -147,18 +147,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _fetchBannerData();
     
     // ✅ اجباری کردن حالت Scale Adaptive به عنوان پیش‌فرض
-    // فقط یک بار در نصب اولیه اجرا می‌شود (با یک flag)
+    // فقط یک بار در نصب اولیه اجرا می‌شود
     Future.microtask(() async {
-      final alreadySet = await bind.mainGetLocalOption(key: 'remotik-default-view-set');
+      // چک flag که آیا قبلاً ست شده یا نه
+      final alreadySet = await bind.mainGetLocalOption(key: 'remotik-view-set');
       if (alreadySet != 'Y') {
-        // مقدار درست برای Scale Adaptive
+        // ست کردن روی adaptive (مقدار درست RustDesk)
         await bind.mainSetOption(key: 'view_style', value: 'adaptive');
         await bind.mainSetOption(key: 'custom-view_style', value: 'adaptive');
-        // ثبت flag تا دفعه بعد تکرار نشود
-        await bind.mainSetLocalOption(key: 'remotik-default-view-set', value: 'Y');
+        // ثبت flag تا دفعه بعد تکرار نشه
+        await bind.mainSetLocalOption(key: 'remotik-view-set', value: 'Y');
       }
     });
-
+    
     // --- تنظیم دیفالتِ پسورد عددی (بدون فورس مداوم) ---
     Future.microtask(() async {
       final currentNumeric = await bind.mainGetOption(key: 'allow-numeric-one-time-password');
