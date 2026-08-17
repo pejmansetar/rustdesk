@@ -2588,6 +2588,12 @@ connect(BuildContext context, String id,
     String? connToken,
     bool? isSharedPassword}) async {
   if (id == '') return;
+    // ✅ Force کردن view_style روی adaptive برای هر peer قبل از اتصال
+  await bind.mainSetPeerOption(
+      id: id.replaceAll(' ', ''),
+      key: kOptionViewStyle,
+      value: kRemoteViewStyleAdaptive);
+      
   if (!isDesktop || desktopType == DesktopType.main) {
     try {
       if (Get.isRegistered<IDTextEditingController>()) {
