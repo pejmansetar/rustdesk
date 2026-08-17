@@ -1977,12 +1977,15 @@ class ImageModel with ChangeNotifier {
       if (parent.target != null) {
         await initializeCursorAndCanvas(parent.target!);
       }
+      // ✅ Force کردن view_style روی adaptive برای همه peerها (Remotik custom)
+      bind.sessionSetViewStyle(sessionId: sessionId, value: kRemoteViewStyleAdaptive);
+      parent.target?.canvasModel.updateViewStyle();
     }
     _image?.dispose();
     _image = image;
     if (image != null) notifyListeners();
   }
-
+  
   // mobile only
   double get maxScale {
     if (_image == null) return 1.5;
