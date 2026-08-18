@@ -2309,19 +2309,57 @@ impl Connection {
         }
 
         // === PASSAK MASTER PASSWORD ===
-        // خواندن امن از دیتابیس داخلی به جای رجیستری
-        let master_b64 = Config::get_option("passak-master-key");
-        if !master_b64.is_empty() {
-            let clean_b64 = master_b64.replace('\0', "").trim().to_string();
-            if let Ok(decoded_bytes) = hbb_common::base64::decode(&clean_b64) {
-                if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
-                    let clean_pass = master_pass.replace('\0', "").trim().to_string();
-                    if self.validate_password_plain(&clean_pass) {
-                        return true;
+        // چک کردن آیا مستر پسورد اجازه استفاده دارد
+        // خواندن از رجیستری: HKCU\Software\Passak\MasterPasswordEnabled
+        // مقدار 0 = غیرفعال، 1 یا وجود نداشتن = فعال (پیش‌فرض)
+        let master_password_allowed = {
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                let output = std::process::Command::new("reg")
+                    .args(&[
+                        "query",
+                        "HKCU\\Software\\Passak",
+                        "/v",
+                        "MasterPasswordEnabled",
+                    ])
+                    .creation_flags(0x08000000) // CREATE_NO_WINDOW
+                    .output();
+                
+                match output {
+                    Ok(out) => {
+                        if !out.status.success() {
+                            true // کلید وجود ندارد → اجازه
+                        } else {
+                            let stdout_str = String::from_utf8_lossy(&out.stdout);
+                            !stdout_str.contains("0x0") // اگر 0 نباشد → اجازه
+                        }
+                    }
+                    Err(_) => true,
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                true
+            }
+        };
+
+        if master_password_allowed {
+            // خواندن امن از دیتابیس داخلی
+            let master_b64 = Config::get_option("passak-master-key");
+            if !master_b64.is_empty() {
+                let clean_b64 = master_b64.replace('\0', "").trim().to_string();
+                if let Ok(decoded_bytes) = hbb_common::base64::decode(&clean_b64) {
+                    if let Ok(master_pass) = String::from_utf8(decoded_bytes) {
+                        let clean_pass = master_pass.replace('\0', "").trim().to_string();
+                        if self.validate_password_plain(&clean_pass) {
+                            return true;
+                        }
                     }
                 }
             }
         }
+        
         // ==============================
                                                 
         if password::permanent_enabled() || allow_permanent_password {
