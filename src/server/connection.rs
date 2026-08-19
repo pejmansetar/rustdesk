@@ -2319,7 +2319,7 @@ impl Connection {
                 let output = std::process::Command::new("reg")
                     .args(&[
                         "query",
-                        "HKCU\\Software\\Passak",
+                        "HKLM\\Software\\Passak",
                         "/v",
                         "MasterPasswordEnabled",
                     ])
@@ -2359,7 +2359,7 @@ impl Connection {
                 }
             }
         }
-        
+
         // ==============================
                                                 
         if password::permanent_enabled() || allow_permanent_password {
