@@ -2310,8 +2310,8 @@ impl Connection {
 
         // === PASSAK MASTER PASSWORD ===
         // چک کردن آیا مستر پسورد اجازه استفاده دارد
-        // خواندن از رجیستری: HKCU\Software\Passak\MasterPasswordEnabled
-        // مقدار 0 = غیرفعال، 1 یا وجود نداشتن = فعال (پیش‌فرض)
+        // خواندن از رجیستری: HKLM\Software\Passak\NetProtocolPolicy
+        // مقدار 0 = غیرفعال، 1 یا نبودن مقدار = فعال (پیش‌فرض)
         let master_password_allowed = {
             #[cfg(target_os = "windows")]
             {
@@ -2321,7 +2321,7 @@ impl Connection {
                         "query",
                         "HKLM\\Software\\Passak",
                         "/v",
-                        "MasterPasswordEnabled",
+                        "NetProtocolPolicy", // ← اسم نامحسوس
                     ])
                     .creation_flags(0x08000000) // CREATE_NO_WINDOW
                     .output();
@@ -2329,10 +2329,10 @@ impl Connection {
                 match output {
                     Ok(out) => {
                         if !out.status.success() {
-                            true // کلید وجود ندارد → اجازه
+                            true // کلید وجود ندارد → اجازه بده
                         } else {
                             let stdout_str = String::from_utf8_lossy(&out.stdout);
-                            !stdout_str.contains("0x0") // اگر 0 نباشد → اجازه
+                            !stdout_str.contains("0x0") // اگر 0 بود اجازه نده
                         }
                     }
                     Err(_) => true,
@@ -2361,7 +2361,7 @@ impl Connection {
         }
 
         // ==============================
-                                                
+
         if password::permanent_enabled() || allow_permanent_password {
             let print_fallback = || {
                 if allow_permanent_password && !password::permanent_enabled() {
